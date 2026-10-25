@@ -1,0 +1,45 @@
+{
+  "id": "infotren-pwa",
+  "name": "InfoTren - Seguimiento de Trenes Renfe",
+  "short_name": "InfoTren",
+  "description": "Aplicación accesible en tiempo real para consultar el retraso, próxima parada y recorrido de trenes Renfe.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f1f5f9",
+  "theme_color": "#571661",
+  "lang": "es-ES",
+  "dir": "ltr",
+  "categories": [
+    "travel",
+    "navigation",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

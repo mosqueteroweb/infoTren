@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>InfoTren - Consulta y Seguimiento de Trenes Renfe en Tiempo Real</title>
+    <meta name="description" content="Aplicación accesible para consultar cualquier tren de Renfe en tiempo real: retraso, próxima parada, origen, destino, mapa e itinerario.">
+    <meta name="application-name" content="InfoTren">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="InfoTren">
+    <meta name="theme-color" content="#571661">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-group" onclick="app.showHomeView()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.showHomeView();}" tabindex="0" role="button" aria-label="Volver al inicio de InfoTren">
+                <div class="brand-logo" aria-hidden="true">
+                    <span class="train-icon">🚆</span>
+                </div>
+                <div>
+                    <h1 class="brand-title">InfoTren <span class="brand-badge">TIEMPO REAL</span></h1>
+                    <p class="brand-subtitle">Estado y puntualidad de trenes Renfe</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <button type="button" class="btn-font-scale" id="fontScaleBtn" onclick="app.cycleFontScale()" title="Cambiar tamaño de letra" aria-label="Aumentar tamaño de letra">
+                    A+
+                </button>
+                <button type="button" class="btn-install-pwa" id="installPwaBtn" onclick="app.installPWA()" style="display:none;" title="Instalar aplicación InfoTren" aria-label="Instalar aplicación InfoTren">
+                    📲 Instalar
+                </button>
+                <div class="data-status" id="connectionStatus" role="status" aria-live="polite" title="Estado de la conexión">
+                    <span class="status-dot pulsing"></span>
+                    <span class="status-text" id="statusText">Conectando...</span>
+                </div>
+                <button type="button" class="btn-icon" id="refreshBtn" onclick="app.forceRefresh()" title="Actualizar datos ahora" aria-label="Actualizar datos ahora">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+                        <path d="M21 3v5h-5"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <!-- Navegación de pestañas principales -->
+        <nav class="nav-tabs" role="tablist" aria-label="Secciones principales">
+            <button type="button" class="nav-tab active" id="tabSearch" role="tab" aria-selected="true" aria-controls="sectionSearch" onclick="app.switchTab('search')">
+                <svg class="tab-icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <span>Buscar Tren</span>
+            </button>
+            <button type="button" class="nav-tab" id="tabFleet" role="tab" aria-selected="false" aria-controls="sectionFleet" onclick="app.switchTab('fleet')">
+                <svg class="tab-icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                <span>En Circulación</span>
+                <span class="tab-badge" id="totalTrainsCount">0</span>
+            </button>
+        </nav>
+
+        <!-- SECCIÓN 1: BÚSQUEDA Y DETALLE DEL TREN -->
+        <section id="sectionSearch" class="tab-content active" role="tabpanel" aria-labelledby="tabSearch">
+            <!-- Buscador Principal -->
+            <div class="search-card" id="searchCard">
+                <div class="search-header">
+                    <h2>Consulta tu tren por su número</h2>
+                    <p>Escribe el número comercial de tu billete · Ejemplo: 03093, 02143, 18773</p>
+                </div>
+
+                <form class="search-form" id="searchForm" onsubmit="app.handleSearchSubmit(event)">
+                    <div class="search-input-wrapper">
+                        <span class="search-icon" aria-hidden="true">🔍</span>
+                        <input 
+                            type="text" 
+                            id="trainInput" 
+                            class="search-input" 
+                            placeholder="Ej: 03093 o ciudad..." 
+                            maxlength="20"
+                            inputmode="search"
+                            autocomplete="off" 
+                            autocorrect="off" 
+                            autocapitalize="off" 
+                            spellcheck="false"
+                            aria-label="Número de tren o estación a consultar"
+                            oninput="app.handleInputSearch(event)"
+                            onkeydown="app.handleInputKeydown(event)"
+                        >
+                        <button type="button" class="btn-clear" id="btnClear" onclick="app.clearSearch()" style="display:none;" title="Borrar texto" aria-label="Borrar texto de búsqueda">✕</button>
+                        
+                        <!-- Desplegable con sugerencias en vivo -->
+                        <div class="autocomplete-dropdown" id="autocompleteDropdown" role="listbox" style="display:none;"></div>
+                    </div>
+                    <button type="submit" class="btn-primary" aria-label="Consultar tren">
+                        <span>Consultar</span>
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.8" fill="none" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                </form>
+
+                <!-- Búsquedas recientes del usuario -->
+                <div class="recent-access" id="recentAccess" style="display:none;">
+                    <span class="quick-title">Consultados recientemente:</span>
+                    <div class="quick-chips" id="recentChips"></div>
+                </div>
+            </div>
+
+            <!-- Contenedor del Detalle del Tren Consultado -->
+            <div id="trainDetailContainer" class="train-detail-container" style="display: none;">
+                <!-- TARJETA ÚNICA DEL TREN: 1º RETRASO Y PRÓXIMA PARADA, 2º TRAYECTO COMPACTO -->
+                <div class="senior-card unified-train-card">
+                    <!-- Cabecera del tren con botón de lupa y compartir -->
+                    <div class="detail-header-row">
+                        <div class="detail-title-group">
+                            <div class="product-badge" id="detailProductBadge">AVE</div>
+                            <div>
+                                <h2 class="train-number" id="detailTrainNumber">Tren #02143</h2>
+                                <p class="train-service-name" id="detailServiceName">Alta Velocidad Española</p>
+                            </div>
+                        </div>
+
+                        <div class="detail-header-actions">
+                            <button type="button" class="btn-action btn-search-toggle" onclick="app.showSearchForm()" title="Buscar otro número de tren" aria-label="Buscar otro número de tren">
+                                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <span>Buscar otro</span>
+                            </button>
+                            <button type="button" class="btn-action" id="btnShare" onclick="app.shareTrain()" title="Compartir o copiar enlace de este tren" aria-label="Compartir este tren">
+                                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                                <span id="shareBtnText">Compartir</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 1. PRIMERO: RETRASO Y PRÓXIMA PARADA -->
+                    <div class="train-status-section">
+                        <div class="delay-highlight" id="detailDelayBanner" role="status" aria-live="polite">
+                            <span class="delay-icon" id="detailDelayIcon" aria-hidden="true">🟢</span>
+                            <span class="delay-text" id="detailDelayText">EN HORA · Sin retraso</span>
+                        </div>
+                        <div class="next-station-row">
+                            <span class="next-station-tag">PRÓXIMA PARADA:</span>
+                            <strong class="next-station-name" id="detailNextStationShort">Zaragoza Del.</strong>
+                            <span class="next-station-eta" id="detailNextEta">Llegada prevista: 11:40</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. DESPUÉS: ORIGEN Y DESTINO COMPACTOS (MÁX 15 CARACTERES CADA UNO) -->
+                    <div class="compact-route-section" aria-label="Trayecto del tren">
+                        <div class="route-box-compact">
+                            <div class="route-col">
+                                <span class="route-label">ORIGEN</span>
+                                <strong class="route-city-text" id="detailOriginShort">Madrid Atocha</strong>
+                                <span class="route-time-text" id="detailDepTime">Salida: 09:27</span>
+                            </div>
+                            <div class="route-arrow-icon" aria-hidden="true">➔</div>
+                            <div class="route-col route-col-dest">
+                                <span class="route-label">DESTINO</span>
+                                <strong class="route-city-text" id="detailDestinationShort">Barcelona Sants</strong>
+                                <span class="route-time-text" id="detailArrTime">Llegada: 12:30</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1. PRIMER DESPLEGABLE: MAPA EN VIVO -->
+                <details class="senior-accordion" id="accordionMap" ontoggle="if(this.open) setTimeout(() => app.refreshMap(), 150)">
+                    <summary class="accordion-summary">
+                        <span class="summary-text">🗺️ Ver posición del tren en el mapa</span>
+                        <span class="summary-chevron" aria-hidden="true">▼</span>
+                    </summary>
+                    <div class="accordion-body">
+                        <div class="map-controls">
+                            <button class="btn-sm" type="button" onclick="app.centerMapOnTrain()">🎯 Centrar en el tren</button>
+                            <button class="btn-sm" type="button" onclick="app.fitMapToRoute()">↔️ Ver ruta completa</button>
+                        </div>
+                        <div class="map-wrapper">
+                            <div id="trainMap" class="train-map" aria-label="Mapa de seguimiento del tren"></div>
+                            <div class="map-legend">
+                                <span><span class="legend-dot train-dot"></span> Tren</span>
+                                <span><span class="legend-dot route-dot"></span> Ruta</span>
+                                <span><span class="legend-dot station-dot"></span> Paradas</span>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- 2. SEGUNDO DESPLEGABLE: ITINERARIO Y PARADAS -->
+                <details class="senior-accordion" id="accordionStops">
+                    <summary class="accordion-summary">
+                        <span class="summary-text">⏱️ Ver itinerario y paradas · <span id="stopsSummaryBadge">0 paradas</span></span>
+                        <span class="summary-chevron" aria-hidden="true">▼</span>
+                    </summary>
+                    <div class="accordion-body">
+                        <p class="timeline-helper">Pulsa en cualquier parada para ver su ubicación en el mapa:</p>
+                        <div class="timeline-wrapper">
+                            <div class="timeline-container" id="stationsTimeline"></div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- 3. TERCER DESPLEGABLE: DATOS TÉCNICOS -->
+                <details class="senior-accordion" id="accordionTechnical">
+                    <summary class="accordion-summary">
+                        <span class="summary-text">ℹ️ Ver datos técnicos · Material y accesibilidad</span>
+                        <span class="summary-chevron" aria-hidden="true">▼</span>
+                    </summary>
+                    <div class="accordion-body">
+                        <div class="technical-details">
+                            <div class="tech-item">
+                                <span class="tech-label">Material Rodante:</span>
+                                <strong class="tech-value" id="detailMaterial">Talgo Serie 102</strong>
+                            </div>
+                            <div class="tech-item">
+                                <span class="tech-label">Matrícula / Rama:</span>
+                                <strong class="tech-value" id="detailMatricula">--</strong>
+                            </div>
+                            <div class="tech-item">
+                                <span class="tech-label">Accesibilidad:</span>
+                                <strong class="tech-value" id="detailAccessible">♿ Servicio Atendo / PMR</strong>
+                            </div>
+                            <div class="tech-item">
+                                <span class="tech-label">Última parada superada:</span>
+                                <strong class="tech-value" id="detailLastStation">--</strong>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Estado Vacío Inicial -->
+            <div id="emptySearchPrompt" class="empty-state">
+                <div class="empty-icon" aria-hidden="true">🚆</div>
+                <h3>Escribe el número de tu tren arriba y pulsa Consultar</h3>
+                <p>Si no conoces el número exacto, puedes ver todos los trenes que están viajando ahora mismo:</p>
+                <button type="button" class="btn-secondary-large" onclick="app.switchTab('fleet')">
+                    📋 Ver lista de trenes en circulación
+                </button>
+            </div>
+
+            <!-- Estado de Error / Tren No Encontrado -->
+            <div id="notFoundState" class="not-found-state" style="display: none;" role="alert">
+                <div class="not-found-icon" aria-hidden="true">🔎</div>
+                <h3 id="notFoundTitle">No se encontró el tren</h3>
+                <p id="notFoundMsg">No disponemos de información en tiempo real para este número de tren en este momento.</p>
+                <div class="not-found-actions">
+                    <button type="button" class="btn-primary" onclick="app.showSearchForm()">
+                        🔍 Buscar otro número de tren
+                    </button>
+                    <button type="button" class="btn-secondary-large" onclick="app.switchTab('fleet')">
+                        📋 Ver trenes en circulación
+                    </button>
+                </div>
+                <div class="not-found-tips">
+                    <p><strong>💡 Consejos de ayuda:</strong></p>
+                    <ul>
+                        <li>Escribe solo los números del tren sin letras: por ejemplo <code>3093</code> en lugar de <code>AVE 3093</code>.</li>
+                        <li>Se muestran trenes AVE, Avlo, Alvia, Euromed, Intercity y Media Distancia que están circulando hoy.</li>
+                        <li>Si el tren aún no ha salido o ya terminó su viaje hace horas, no aparecerá activo todavía.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 2: LISTADO DE TODOS LOS TRENES EN CIRCULACIÓN -->
+        <section id="sectionFleet" class="tab-content" role="tabpanel" aria-labelledby="tabFleet">
+            <!-- Accesos directos a trenes activos en circulación -->
+            <div class="quick-access fleet-quick-access">
+                <span class="quick-title">⚡ PULSA UN TREN PARA VER SU ESTADO:</span>
+                <div class="quick-chips" id="quickChips">
+                    <span class="chip loading-chip">Cargando trenes activos...</span>
+                </div>
+            </div>
+
+            <div class="fleet-control-bar">
+                <div class="fleet-search">
+                    <span class="search-icon" aria-hidden="true">🔍</span>
+                    <input 
+                        type="text" 
+                        id="fleetFilterInput" 
+                        placeholder="Filtrar por número, origen o destino..." 
+                        aria-label="Filtrar lista de trenes por número, origen o destino"
+                        oninput="app.filterFleetTable()"
+                    >
+                </div>
+
+                <div class="filter-pills" id="fleetProductFilters" role="group" aria-label="Filtrar por tipo de tren">
+                    <button type="button" class="filter-pill active" data-filter="all" onclick="app.setFleetFilter('all', this)">Todos: <span id="countAll">0</span></button>
+                    <button type="button" class="filter-pill" data-filter="AVE" onclick="app.setFleetFilter('AVE', this)">AVE: <span id="countAve">0</span></button>
+                    <button type="button" class="filter-pill" data-filter="AVLO" onclick="app.setFleetFilter('AVLO', this)">Avlo: <span id="countAvlo">0</span></button>
+                    <button type="button" class="filter-pill" data-filter="Alvia" onclick="app.setFleetFilter('Alvia', this)">Alvia: <span id="countAlvia">0</span></button>
+                    <button type="button" class="filter-pill" data-filter="MD" onclick="app.setFleetFilter('MD', this)">Media Distancia: <span id="countMd">0</span></button>
+                    <button type="button" class="filter-pill" data-filter="delay" onclick="app.setFleetFilter('delay', this)">Con Retraso: <span id="countDelay">0</span></button>
+                </div>
+            </div>
+
+            <div class="fleet-table-wrapper">
+                <table class="fleet-table" id="fleetTable">
+                    <thead>
+                        <tr>
+                            <th>Nº Tren</th>
+                            <th>Tipo</th>
+                            <th>Origen</th>
+                            <th>Destino</th>
+                            <th>Próxima Parada</th>
+                            <th>Estado</th>
+                            <th>Material</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fleetTableBody">
+                        <tr>
+                            <td colspan="8" class="table-loading">Cargando trenes en circulación...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    
+    <!-- Modal de ayuda para instalar la App PWA en iPhone / Android -->
+    <div id="pwaInstallModal" class="pwa-modal-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="pwaModalTitle">
+        <div class="pwa-modal-card">
+            <div class="pwa-modal-header">
+                <span class="pwa-modal-icon" aria-hidden="true">📲</span>
+                <h2 id="pwaModalTitle">Cómo instalar InfoTren</h2>
+            </div>
+            
+            <div class="pwa-modal-steps">
+                <!-- SECCIÓN ESPECÍFICA PARA IPHONE / IPAD -->
+                <div class="pwa-step-box pwa-step-ios" id="pwaStepIos">
+                    <div class="pwa-platform-header">
+                        <span class="pwa-platform-icon">🍎</span>
+                        <strong>En iPhone o iPad (Safari):</strong>
+                    </div>
+                    <p class="pwa-ios-explanation">
+                        En los iPhone, Apple no permite descargas directas: se instala siempre a través del botón oficial de Safari <strong>Compartir <span class="ios-share-badge" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.6" fill="none"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></span></strong>:
+                    </p>
+                    <ol class="pwa-ios-list">
+                        <li>Asegúrate de estar en <strong>Safari</strong> (si abriste el enlace desde <em>WhatsApp</em>, pulsa la brújula 🧭 abajo a la derecha para abrirlo en Safari).</li>
+                        <li>En la barra inferior de tu iPhone, pulsa el botón <strong>Compartir</strong> (icono de un cuadrado con flecha hacia arriba <span class="ios-share-badge"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.6" fill="none"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></span>).</li>
+                        <li>En el menú que se despliega, desliza hacia abajo y toca en <strong>"Añadir a pantalla de inicio ➕"</strong>.</li>
+                        <li>Pulsa <strong>"Añadir"</strong> arriba a la derecha. ¡Listo! Ya tendrás la app con su icono en tu móvil.</li>
+                    </ol>
+                </div>
+
+                <!-- SECCIÓN PARA ANDROID -->
+                <div class="pwa-step-box" id="pwaStepAndroid">
+                    <div class="pwa-platform-header">
+                        <span class="pwa-platform-icon">📱</span>
+                        <strong>En teléfonos Android (Chrome):</strong>
+                    </div>
+                    <p>Pulsa el menú de tres puntos <strong>⋮</strong> arriba a la derecha de Chrome y selecciona <strong>"Instalar aplicación"</strong> o <strong>"Añadir a pantalla de inicio"</strong>.</p>
+                </div>
+            </div>
+
+            <button type="button" class="btn-primary pwa-modal-close" onclick="app.closeInstallModal()">
+                Entendido · Cerrar
+            </button>
+        </div>
+    </div>
+
+    <footer class="app-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <img 
+                    src="./logo_mosqueteroweb.png" 
+                    alt="Logo oficial de Pedro Mosqueteroweb" 
+                    class="footer-avatar" 
+                    width="44" 
+                    height="44" 
+                    loading="lazy"
+                />
+                <div class="footer-author-box">
+                    <p class="footer-author">
+                        Desarrollado por <a href="https://github.com/mosqueteroweb" target="_blank" rel="noopener"><strong>Pedro Mosqueteroweb</strong></a> · Código Abierto (<a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GPL-3.0</a>)
+                    </p>
+                    <p class="footer-links">
+                        <a href="mailto:mosqueteroweb@gmail.com">mosqueteroweb@gmail.com</a>
+                        <span class="footer-sep">·</span>
+                        <a href="https://github.com/mosqueteroweb" target="_blank" rel="noopener">GitHub @mosqueteroweb</a>
+                    </p>
+                </div>
+            </div>
+            <div class="footer-divider" aria-hidden="true"></div>
+            <p class="footer-app-desc">
+                <strong>InfoTren</strong> · Seguimiento accesible en tiempo real de trenes Renfe.
+            </p>
+            <p class="footer-sub">
+                Última actualización de telemetría: <span id="lastUpdatedText">--:--:--</span>
+            </p>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Custom App JS -->
+    <script src="app.js"></script>
+</body>
+</html>

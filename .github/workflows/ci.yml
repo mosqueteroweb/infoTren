@@ -1,0 +1,59 @@
+name: CI & Validación de Código
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  lint-and-validate:
+    name: Validar Sintaxis y Recursos
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar linters ligeros
+        run: |
+          npm install -g htmlhint eslint
+
+      - name: Validar sintaxis JavaScript
+        run: |
+          echo "Comprobando sintaxis JS..."
+          node --check sw.js
+          node --check app.js
+          if [ -f "proxy-worker/worker.js" ]; then
+            node --check proxy-worker/worker.js
+          fi
+          echo "✅ Sintaxis JavaScript correcta."
+
+      - name: Validar integridad de archivos JSON
+        run: |
+          echo "Validando archivos JSON..."
+          python3 -c '
+          import json, glob, sys
+          failed = False
+          for path in glob.glob("**/*.json", recursive=True):
+              try:
+                  with open(path, "r", encoding="utf-8") as f:
+                      json.load(f)
+              except Exception as e:
+                  print(f"❌ Error en JSON {path}: {e}")
+                  failed = True
+          if failed:
+              sys.exit(1)
+          print("✅ Todos los archivos JSON son válidos.")
+          '
+
+      - name: Validar HTML con HTMLHint
+        run: |
+          echo "Validando HTML..."
+          htmlhint index.html --rules="tag-pair=true,spec-char-escape=false,id-unique=true,attr-no-duplication=true"
+          echo "✅ HTML principal verificado con éxito."

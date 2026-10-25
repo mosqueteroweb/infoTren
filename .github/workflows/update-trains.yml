@@ -1,0 +1,53 @@
+name: Actualizar Datos de Renfe
+
+on:
+  schedule:
+    - cron: '0 */2 * * *' # Cada 2 horas para mantener la telemetría local de respaldo actualizada
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub Actions
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Descargar telemetría actualizada
+        run: |
+          python -c '
+          import urllib.request, os
+
+          headers = {"User-Agent": "Mozilla/5.0"}
+          urls = [
+              ("https://tiempo-real.largorecorrido.renfe.com/renfe-visor/flotaLD.json", "data/flotaLD.json"),
+              ("https://tiempo-real.largorecorrido.renfe.com/renfe-visor/trenesConEstacionesLD.json", "data/trenesConEstacionesLD.json")
+          ]
+
+          os.makedirs("data", exist_ok=True)
+          for u, dest in urls:
+              try:
+                  req = urllib.request.Request(u, headers=headers)
+                  with urllib.request.urlopen(req, timeout=15) as resp:
+                      content = resp.read()
+                      if len(content) > 1000:
+                          with open(dest, "wb") as f:
+                              f.write(content)
+                          print(f"Descargado con éxito: {dest} ({len(content)} bytes)")
+              except Exception as e:
+                  print(f"Error descargando {u}: {e}")
+          '
+
+      - name: Guardar cambios si hay diferencias
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-sync telemetría Renfe" && git push)
