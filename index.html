@@ -14,8 +14,8 @@
     <link rel="manifest" href="./manifest.json">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <!-- Scripts only from this site and the pinned Leaflet build; data only from Renfe and the CORS proxies. 'unsafe-inline' is still needed for the onclick attributes in this page. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/; style-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/; img-src 'self' data: https://tile.openstreetmap.org https://unpkg.com/leaflet@1.9.4/; font-src 'self'; connect-src 'self' https://tiempo-real.largorecorrido.renfe.com https://cors-anywhere.fly.dev https://api.allorigins.win https://api.codetabs.com https://*.workers.dev; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+    <!-- Scripts only from this site and the pinned Leaflet build (no inline scripts); data only from Renfe and the CORS proxies. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com/leaflet@1.9.4/; style-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/; img-src 'self' data: https://tile.openstreetmap.org https://unpkg.com/leaflet@1.9.4/; font-src 'self'; connect-src 'self' https://tiempo-real.largorecorrido.renfe.com https://cors-anywhere.fly.dev https://api.allorigins.win https://api.codetabs.com https://*.workers.dev; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
     
@@ -31,7 +31,7 @@
 <body>
     <header class="app-header">
         <div class="header-container">
-            <div class="brand-group" onclick="app.showHomeView()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.showHomeView();}" tabindex="0" role="button" aria-label="Volver al inicio de InfoTren">
+            <div class="brand-group" data-action="showHomeView" tabindex="0" role="button" aria-label="Volver al inicio de InfoTren">
                 <div class="brand-logo" aria-hidden="true">
                     <span class="train-icon">🚆</span>
                 </div>
@@ -42,17 +42,17 @@
             </div>
 
             <div class="header-actions">
-                <button type="button" class="btn-font-scale" id="fontScaleBtn" onclick="app.cycleFontScale()" title="Cambiar tamaño de letra" aria-label="Aumentar tamaño de letra">
+                <button type="button" class="btn-font-scale" id="fontScaleBtn" data-action="cycleFontScale" title="Cambiar tamaño de letra" aria-label="Aumentar tamaño de letra">
                     A+
                 </button>
-                <button type="button" class="btn-install-pwa" id="installPwaBtn" onclick="app.installPWA()" style="display:none;" title="Instalar aplicación InfoTren" aria-label="Instalar aplicación InfoTren">
+                <button type="button" class="btn-install-pwa" id="installPwaBtn" data-action="installPWA" style="display:none;" title="Instalar aplicación InfoTren" aria-label="Instalar aplicación InfoTren">
                     📲 Instalar
                 </button>
                 <div class="data-status" id="connectionStatus" role="status" aria-live="polite" title="Estado de la conexión">
                     <span class="status-dot pulsing"></span>
                     <span class="status-text" id="statusText">Conectando...</span>
                 </div>
-                <button type="button" class="btn-icon" id="refreshBtn" onclick="app.forceRefresh()" title="Actualizar datos ahora" aria-label="Actualizar datos ahora">
+                <button type="button" class="btn-icon" id="refreshBtn" data-action="forceRefresh" title="Actualizar datos ahora" aria-label="Actualizar datos ahora">
                     <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
                         <path d="M21 3v5h-5"/>
@@ -65,11 +65,11 @@
     <main class="main-container">
         <!-- Navegación de pestañas principales -->
         <nav class="nav-tabs" role="tablist" aria-label="Secciones principales">
-            <button type="button" class="nav-tab active" id="tabSearch" role="tab" aria-selected="true" aria-controls="sectionSearch" onclick="app.switchTab('search')">
+            <button type="button" class="nav-tab active" id="tabSearch" role="tab" aria-selected="true" aria-controls="sectionSearch" data-action="switchTab" data-arg="search">
                 <svg class="tab-icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 <span>Buscar Tren</span>
             </button>
-            <button type="button" class="nav-tab" id="tabFleet" role="tab" aria-selected="false" aria-controls="sectionFleet" onclick="app.switchTab('fleet')">
+            <button type="button" class="nav-tab" id="tabFleet" role="tab" aria-selected="false" aria-controls="sectionFleet" data-action="switchTab" data-arg="fleet">
                 <svg class="tab-icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                 <span>En Circulación</span>
                 <span class="tab-badge" id="totalTrainsCount">0</span>
@@ -85,7 +85,7 @@
                     <p>Escribe el número comercial de tu billete · Ejemplo: 03093, 02143, 18773</p>
                 </div>
 
-                <form class="search-form" id="searchForm" onsubmit="app.handleSearchSubmit(event)">
+                <form class="search-form" id="searchForm">
                     <div class="search-input-wrapper">
                         <span class="search-icon" aria-hidden="true">🔍</span>
                         <input 
@@ -100,10 +100,8 @@
                             autocapitalize="off" 
                             spellcheck="false"
                             aria-label="Número de tren o estación a consultar"
-                            oninput="app.handleInputSearch(event)"
-                            onkeydown="app.handleInputKeydown(event)"
                         >
-                        <button type="button" class="btn-clear" id="btnClear" onclick="app.clearSearch()" style="display:none;" title="Borrar texto" aria-label="Borrar texto de búsqueda">✕</button>
+                        <button type="button" class="btn-clear" id="btnClear" data-action="clearSearch" style="display:none;" title="Borrar texto" aria-label="Borrar texto de búsqueda">✕</button>
                         
                         <!-- Desplegable con sugerencias en vivo -->
                         <div class="autocomplete-dropdown" id="autocompleteDropdown" role="listbox" style="display:none;"></div>
@@ -136,11 +134,11 @@
                         </div>
 
                         <div class="detail-header-actions">
-                            <button type="button" class="btn-action btn-search-toggle" onclick="app.showSearchForm()" title="Buscar otro número de tren" aria-label="Buscar otro número de tren">
+                            <button type="button" class="btn-action btn-search-toggle" data-action="showSearchForm" title="Buscar otro número de tren" aria-label="Buscar otro número de tren">
                                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                                 <span>Buscar otro</span>
                             </button>
-                            <button type="button" class="btn-action" id="btnShare" onclick="app.shareTrain()" title="Compartir o copiar enlace de este tren" aria-label="Compartir este tren">
+                            <button type="button" class="btn-action" id="btnShare" data-action="shareTrain" title="Compartir o copiar enlace de este tren" aria-label="Compartir este tren">
                                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
                                 <span id="shareBtnText">Compartir</span>
                             </button>
@@ -179,15 +177,15 @@
                 </div>
 
                 <!-- 1. PRIMER DESPLEGABLE: MAPA EN VIVO -->
-                <details class="senior-accordion" id="accordionMap" ontoggle="if(this.open) setTimeout(() => app.refreshMap(), 150)">
+                <details class="senior-accordion" id="accordionMap">
                     <summary class="accordion-summary">
                         <span class="summary-text">🗺️ Ver posición del tren en el mapa</span>
                         <span class="summary-chevron" aria-hidden="true">▼</span>
                     </summary>
                     <div class="accordion-body">
                         <div class="map-controls">
-                            <button class="btn-sm" type="button" onclick="app.centerMapOnTrain()">🎯 Centrar en el tren</button>
-                            <button class="btn-sm" type="button" onclick="app.fitMapToRoute()">↔️ Ver ruta completa</button>
+                            <button class="btn-sm" type="button" data-action="centerMapOnTrain">🎯 Centrar en el tren</button>
+                            <button class="btn-sm" type="button" data-action="fitMapToRoute">↔️ Ver ruta completa</button>
                         </div>
                         <div class="map-wrapper">
                             <div id="trainMap" class="train-map" aria-label="Mapa de seguimiento del tren"></div>
@@ -248,7 +246,7 @@
                 <div class="empty-icon" aria-hidden="true">🚆</div>
                 <h3>Escribe el número de tu tren arriba y pulsa Consultar</h3>
                 <p>Si no conoces el número exacto, puedes ver todos los trenes que están viajando ahora mismo:</p>
-                <button type="button" class="btn-secondary-large" onclick="app.switchTab('fleet')">
+                <button type="button" class="btn-secondary-large" data-action="switchTab" data-arg="fleet">
                     📋 Ver lista de trenes en circulación
                 </button>
             </div>
@@ -259,10 +257,10 @@
                 <h3 id="notFoundTitle">No se encontró el tren</h3>
                 <p id="notFoundMsg">No disponemos de información en tiempo real para este número de tren en este momento.</p>
                 <div class="not-found-actions">
-                    <button type="button" class="btn-primary" onclick="app.showSearchForm()">
+                    <button type="button" class="btn-primary" data-action="showSearchForm">
                         🔍 Buscar otro número de tren
                     </button>
-                    <button type="button" class="btn-secondary-large" onclick="app.switchTab('fleet')">
+                    <button type="button" class="btn-secondary-large" data-action="switchTab" data-arg="fleet">
                         📋 Ver trenes en circulación
                     </button>
                 </div>
@@ -295,17 +293,16 @@
                         id="fleetFilterInput" 
                         placeholder="Filtrar por número, origen o destino..." 
                         aria-label="Filtrar lista de trenes por número, origen o destino"
-                        oninput="app.filterFleetTable()"
                     >
                 </div>
 
                 <div class="filter-pills" id="fleetProductFilters" role="group" aria-label="Filtrar por tipo de tren">
-                    <button type="button" class="filter-pill active" data-filter="all" onclick="app.setFleetFilter('all', this)">Todos: <span id="countAll">0</span></button>
-                    <button type="button" class="filter-pill" data-filter="AVE" onclick="app.setFleetFilter('AVE', this)">AVE: <span id="countAve">0</span></button>
-                    <button type="button" class="filter-pill" data-filter="AVLO" onclick="app.setFleetFilter('AVLO', this)">Avlo: <span id="countAvlo">0</span></button>
-                    <button type="button" class="filter-pill" data-filter="Alvia" onclick="app.setFleetFilter('Alvia', this)">Alvia: <span id="countAlvia">0</span></button>
-                    <button type="button" class="filter-pill" data-filter="MD" onclick="app.setFleetFilter('MD', this)">Media Distancia: <span id="countMd">0</span></button>
-                    <button type="button" class="filter-pill" data-filter="delay" onclick="app.setFleetFilter('delay', this)">Con Retraso: <span id="countDelay">0</span></button>
+                    <button type="button" class="filter-pill active" data-filter="all" data-action="setFleetFilter" data-arg="all">Todos: <span id="countAll">0</span></button>
+                    <button type="button" class="filter-pill" data-filter="AVE" data-action="setFleetFilter" data-arg="AVE">AVE: <span id="countAve">0</span></button>
+                    <button type="button" class="filter-pill" data-filter="AVLO" data-action="setFleetFilter" data-arg="AVLO">Avlo: <span id="countAvlo">0</span></button>
+                    <button type="button" class="filter-pill" data-filter="Alvia" data-action="setFleetFilter" data-arg="Alvia">Alvia: <span id="countAlvia">0</span></button>
+                    <button type="button" class="filter-pill" data-filter="MD" data-action="setFleetFilter" data-arg="MD">Media Distancia: <span id="countMd">0</span></button>
+                    <button type="button" class="filter-pill" data-filter="delay" data-action="setFleetFilter" data-arg="delay">Con Retraso: <span id="countDelay">0</span></button>
                 </div>
             </div>
 
@@ -370,7 +367,7 @@
                 </div>
             </div>
 
-            <button type="button" class="btn-primary pwa-modal-close" onclick="app.closeInstallModal()">
+            <button type="button" class="btn-primary pwa-modal-close" data-action="closeInstallModal">
                 Entendido · Cerrar
             </button>
         </div>
@@ -396,7 +393,7 @@
                         <span class="footer-sep">·</span>
                         <a href="https://github.com/mosqueteroweb" target="_blank" rel="noopener">GitHub @mosqueteroweb</a>
                         <span class="footer-sep">·</span>
-                        <a href="https://github.com/mosqueteroweb/infoTren/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Versión 1.4.0</a>
+                        <a href="https://github.com/mosqueteroweb/infoTren/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Versión 1.5.0</a>
                     </p>
                 </div>
             </div>

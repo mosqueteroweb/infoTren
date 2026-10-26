@@ -87,7 +87,7 @@ const ROLLING_STOCK = {
 const state = {
     fleet: [],
     routes: [],
-    stations: window.EMBEDDED_STATIONS || {},
+    stations: {},
     currentTrain: null,
     map: null,
     mapLayers: {
@@ -128,8 +128,12 @@ function escapeHTML(str) {
 const isShortText = (v, max = 40) => typeof v === 'string' && v.length > 0 && v.length <= max;
 const isCode = (v) => v === undefined || v === null || isShortText(String(v), 12);
 
+const isTimeText = (v) => v === undefined || v === null || (typeof v === 'string' && v.length <= 25);
+
 function validTrain(t) {
     if (!t || typeof t !== 'object' || !isShortText(t.codComercial, 10)) return false;
+    if (!isTimeText(t.horaLlegadaSigEst)) return false;
+    if (t.codProduct !== undefined && !Number.isInteger(t.codProduct)) return false;
     if (![t.codOrigen, t.codDestino, t.codEstSig, t.codEstAnt, t.mat, t.ultRetraso].every(isCode)) return false;
     const hasPosition = t.latitud !== undefined || t.longitud !== undefined;
     return !hasPosition || (Number.isFinite(t.latitud) && Number.isFinite(t.longitud) &&
@@ -145,7 +149,7 @@ function validateFleet(data) {
 function validateRoutes(data) {
     if (!data || !Array.isArray(data.trenes)) return null;
     const trenes = data.trenes.filter((r) => r && isShortText(String(r.idTren), 10) && Array.isArray(r.estaciones))
-        .map((r) => ({ ...r, estaciones: r.estaciones.filter((s) => s && isShortText(String(s.p), 12)).slice(0, 200) }))
+        .map((r) => ({ ...r, estaciones: r.estaciones.filter((s) => s && isShortText(String(s.p), 12) && isTimeText(s.h) && isTimeText(s.hs)).slice(0, 200) }))
         .slice(0, 2000);
     return { ...data, trenes };
 }
@@ -358,7 +362,9 @@ function loadSavedFontScale() {
 function getRecentSearches() {
     try {
         const stored = localStorage.getItem(RECENT_KEY);
-        return stored ? JSON.parse(stored) : [];
+        const list = stored ? JSON.parse(stored) : [];
+        // Only well-formed entries: this list is rendered back into the page.
+        return Array.isArray(list) ? list.filter((r) => r && isShortText(String(r.num), 10) && isShortText(String(r.prod), 40)).slice(0, 10) : [];
     } catch (e) {
         return [];
     }
@@ -501,13 +507,6 @@ async function fetchWithFallback(url, localFallbackUrl, cacheKey, validate) {
         } catch (e) {}
     }
 
-    // 4. Respaldo integrado en el propio archivo único PWA
-    if (cacheKey === CACHE_FLEET_KEY && window.EMBEDDED_FLEET_FALLBACK) {
-        return { data: window.EMBEDDED_FLEET_FALLBACK, source: 'embedded' };
-    }
-    if (cacheKey === CACHE_ROUTES_KEY && window.EMBEDDED_ROUTES_FALLBACK) {
-        return { data: window.EMBEDDED_ROUTES_FALLBACK, source: 'embedded' };
-    }
 
     throw new Error('No se pudo conectar a los servicios de Renfe.');
 }
@@ -1532,7 +1531,30 @@ function closeInstallModal() {
 // INICIALIZACIÓN
 // ============================================================================
 
+// Event wiring lives here instead of onclick="" attributes, so the CSP can forbid inline scripts.
+function bindUiEvents() {
+    document.addEventListener('click', (e) => {
+        const el = e.target.closest('[data-action]');
+        if (!el || typeof window.app[el.dataset.action] !== 'function') return;
+        window.app[el.dataset.action](el.dataset.arg, el);
+    });
+    document.querySelectorAll('[role="button"][data-action]').forEach((el) => {
+        el.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+        });
+    });
+    document.getElementById('searchForm')?.addEventListener('submit', handleSearchSubmit);
+    const input = document.getElementById('trainInput');
+    input?.addEventListener('input', handleInputSearch);
+    input?.addEventListener('keydown', handleInputKeydown);
+    document.getElementById('fleetFilterInput')?.addEventListener('input', () => filterFleetTable());
+    document.getElementById('accordionMap')?.addEventListener('toggle', (e) => {
+        if (e.target.open) setTimeout(() => refreshMap(), 150);
+    });
+}
+
 async function init() {
+    bindUiEvents();
     loadSavedFontScale();
     setupPWA();
 

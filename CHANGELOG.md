@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.5.0 — 26 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Auditoría de seguridad repetida: proxy de Cloudflare limitado a los dos archivos de Renfe (antes aceptaba `evilrenfe.com`), CSP sin scripts en línea, validación de todos los campos usados y del historial de búsquedas, y retirada de código muerto. [Auditoría](docs/1.5.0/AUDITORIA_SEGURIDAD.md).
+
 ## 1.4.0 — 26 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Auditoría de UX repetida en móvil, tablet y escritorio: itinerario completo sin caja con desplazamiento y con las paradas superadas plegadas, atribución de OpenStreetMap visible, una sola hora estimada, hora programada rotulada, origen y destino legibles en el móvil y en la lista. [Auditoría](docs/1.4.0/AUDITORIA_UX.md).

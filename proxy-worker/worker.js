@@ -21,46 +21,27 @@ export default {
 
         const url = new URL(request.url);
         
-        // El cliente pasa la URL de Renfe en el parámetro 'url' o en el path
-        // Ejemplo: https://mi-proxy.workers.dev/?url=https://tiempo-real.largorecorrido.renfe.com/renfe-visor/flotaLD.json
-        let targetUrl = url.searchParams.get("url");
-
-        if (!targetUrl) {
-            // Si no viene como parámetro, permitir paths directos /flota o /rutas
-            if (url.pathname.includes("flota")) {
-                targetUrl = "https://tiempo-real.largorecorrido.renfe.com/renfe-visor/flotaLD.json";
-            } else if (url.pathname.includes("rutas") || url.pathname.includes("trenes")) {
-                targetUrl = "https://tiempo-real.largorecorrido.renfe.com/renfe-visor/trenesConEstacionesLD.json";
-            } else {
-                return new Response(
-                    JSON.stringify({ 
-                        status: "ok", 
-                        message: "Proxy CORS para InfoTren Renfe activo.",
-                        usage: "/?url=https://tiempo-real.largorecorrido.renfe.com/renfe-visor/flotaLD.json"
-                    }), 
-                    {
-                        headers: { 
-                            "Content-Type": "application/json; charset=utf-8",
-                            "Access-Control-Allow-Origin": "*" 
-                        }
-                    }
-                );
-            }
+        // Only the two public Renfe files can be fetched. The old check (hostname ends with "renfe.com")
+        // also let through "evilrenfe.com" and any other Renfe address, turning the worker into an open proxy.
+        const ALLOWED = {
+            flota: "https://tiempo-real.largorecorrido.renfe.com/renfe-visor/flotaLD.json",
+            rutas: "https://tiempo-real.largorecorrido.renfe.com/renfe-visor/trenesConEstacionesLD.json",
+        };
+        const requested = url.searchParams.get("url");
+        let targetUrl = null;
+        if (requested) {
+            // ?url= keeps working for the app, but only with an exact allowed address (cache-busting query ignored).
+            const clean = requested.split("?")[0];
+            targetUrl = Object.values(ALLOWED).find((u) => u === clean) || null;
+        } else if (url.pathname.includes("flota")) {
+            targetUrl = ALLOWED.flota;
+        } else if (url.pathname.includes("rutas") || url.pathname.includes("trenes")) {
+            targetUrl = ALLOWED.rutas;
         }
-
-        // Validación de seguridad: permitir únicamente dominios oficiales de Renfe
-        try {
-            const parsedTarget = new URL(targetUrl);
-            if (!parsedTarget.hostname.endsWith("renfe.com")) {
-                return new Response(JSON.stringify({ error: "Dominio no permitido. Solo se aceptan peticiones a renfe.com" }), {
-                    status: 403,
-                    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-                });
-            }
-        } catch (e) {
-            return new Response(JSON.stringify({ error: "URL inválida" }), {
-                status: 400,
-                headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+        if (!targetUrl) {
+            return new Response(JSON.stringify({ error: "Solo se permiten flotaLD.json y trenesConEstacionesLD.json de Renfe." }), {
+                status: 403,
+                headers: { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" }
             });
         }
 
