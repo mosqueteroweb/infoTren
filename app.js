@@ -138,7 +138,8 @@ function validTrain(t) {
 
 function validateFleet(data) {
     if (!data || !Array.isArray(data.trenes)) return null;
-    return { ...data, trenes: data.trenes.filter(validTrain).slice(0, 2000) };
+    const unpositioned = Array.isArray(data.trenesNoPosicionados) ? data.trenesNoPosicionados.filter(validTrain) : [];
+    return { ...data, trenes: data.trenes.filter(validTrain).slice(0, 2000), trenesNoPosicionados: unpositioned.slice(0, 2000) };
 }
 
 function validateRoutes(data) {
@@ -539,7 +540,8 @@ async function refreshData(silent = false) {
         const fleetRes = fleetResult.data;
         const routesRes = routesResult.data;
 
-        state.fleet = fleetRes?.trenes || (Array.isArray(fleetRes) ? fleetRes : []);
+        // Trains without a GPS fix still have delay and next stop: keep them searchable (they just get no map marker).
+        state.fleet = [...(fleetRes?.trenes || []), ...(fleetRes?.trenesNoPosicionados || [])];
         state.routes = routesRes?.trenes || (Array.isArray(routesRes) ? routesRes : []);
         state.lastUpdated = new Date();
 

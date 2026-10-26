@@ -1,4 +1,4 @@
-const CACHE_NAME = 'infotren-1.1.0';
+const CACHE_NAME = 'infotren-1.2.0';
 const ASSETS = [
     './',
     './index.html',

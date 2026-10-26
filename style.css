@@ -1484,60 +1484,56 @@ body {
         display: none;
     }
 
+    /* Compact three-line card: train, service and delay / origin → destination / next stop.
+       The whole card opens the train; with 120+ trains the old seven-row card meant ~130 screens of scrolling. */
     .fleet-table tbody tr {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        grid-template-areas:
+            "num   prod  delay"
+            "orig  orig  orig"
+            "next  next  next";
+        column-gap: 0.6rem;
+        row-gap: 0.2rem;
+        align-items: center;
         background: white;
-        border: 2.5px solid var(--border-color);
+        border: 2px solid var(--border-color);
         border-radius: var(--radius-md);
-        margin-bottom: 0.85rem;
-        padding: 0.95rem 1rem;
+        margin-bottom: 0.6rem;
+        padding: 0.7rem 0.9rem;
         box-shadow: var(--shadow-sm);
+        cursor: pointer;
     }
 
     .fleet-table td {
-        padding: 0.35rem 0;
+        padding: 0;
         border-bottom: none;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
         font-size: 1rem;
         font-weight: 700;
-        gap: 0.5rem;
+        min-width: 0;
     }
 
-    .fleet-table td:nth-child(1) {
-        font-size: 1.2rem;
-        font-weight: 800;
-        border-bottom: 2px solid var(--border-subtle);
-        padding-bottom: 0.45rem;
-        margin-bottom: 0.35rem;
-    }
+    .fleet-table td:nth-child(1) { grid-area: num; font-size: 1.15rem; font-weight: 800; }
+    .fleet-table td:nth-child(2) { grid-area: prod; }
+    .fleet-table td:nth-child(6) { grid-area: delay; text-align: right; }
+    /* Origin and destination share one line: "Madrid Atocha → Pamplona Iruña" */
+    .fleet-table td:nth-child(3) { grid-area: orig; display: inline; }
+    .fleet-table td:nth-child(4) { grid-area: orig; display: inline; justify-self: end; text-align: right; }
+    .fleet-table td:nth-child(3)::after { content: ' →'; color: var(--text-muted); }
+    .fleet-table td:nth-child(5) { grid-area: next; font-weight: 600; color: var(--text-muted); }
+    .fleet-table td:nth-child(5)::before { content: 'Próxima: '; font-weight: 700; }
+    .fleet-table td:nth-child(7) { display: none; }
 
-    .fleet-table td:nth-child(1)::before { content: 'Tren'; font-size: 0.82rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; }
-    .fleet-table td:nth-child(2)::before { content: 'Servicio'; font-size: 0.82rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; }
-    .fleet-table td:nth-child(3)::before { content: 'Origen'; font-size: 0.82rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; }
-    .fleet-table td:nth-child(4)::before { content: 'Destino'; font-size: 0.82rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; }
-    .fleet-table td:nth-child(5)::before { content: 'Próxima Parada'; font-size: 0.82rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; }
-    .fleet-table td:nth-child(6)::before { content: 'Puntualidad'; font-size: 0.82rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; }
-    .fleet-table td:nth-child(7)::before { content: 'Material'; font-size: 0.82rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; }
-
+    /* The button stays for keyboard and screen-reader users; the card itself is the tap target. */
     .fleet-table td:last-child {
-        padding-top: 0.6rem;
-        margin-top: 0.4rem;
-        border-top: 2px dashed var(--border-subtle);
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
     }
-
-    .fleet-table td:last-child button {
-        width: 100%;
-        min-height: 50px;
-        padding: 0.65rem;
-        font-size: 1.05rem;
-        font-weight: 800;
-        background: var(--renfe-purple);
-        color: white;
-        border-radius: var(--radius-sm);
-        border: none;
-        cursor: pointer;
-    }
+    .fleet-table td:last-child button:focus-visible { outline: none; }
+    .fleet-table tbody tr:focus-within { outline: 3px solid var(--renfe-purple); outline-offset: 2px; }
 }
 
 @media (min-width: 769px) {
