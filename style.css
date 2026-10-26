@@ -1971,3 +1971,30 @@ body {
 .timeline-step.step-folded { display: none; }
 .show-folded .timeline-step.step-folded { display: block; }
 .timeline-toggle { margin-bottom: 0.6rem; min-height: 44px; }
+
+/* 24 px tap area for route stops; the visible dot stays 14 px in the centre. */
+.station-pin-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Footer links: comfortable 24 px tap height. */
+.footer-author a,
+.footer-links a {
+    display: inline-block;
+    min-height: 24px;
+    line-height: 24px;
+}
+
+/* Respect "reduce motion" in the system settings: no pulsing marker, fades or smooth scrolling. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

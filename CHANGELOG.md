@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.6.0 — 26 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Auditoría de accesibilidad repetida (WCAG 2.2, 5 estados × 3 anchos): buscador como cuadro combinado accesible, paradas del mapa con nombre y zona de 24 px, pestañas con flechas, respeto a «reducir movimiento» y enlaces del pie más fáciles de pulsar. axe-core sin incumplimientos. [Auditoría](docs/1.6.0/AUDITORIA_ACCESIBILIDAD.md).
+
 ## 1.5.0 — 26 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Auditoría de seguridad repetida: proxy de Cloudflare limitado a los dos archivos de Renfe (antes aceptaba `evilrenfe.com`), CSP sin scripts en línea, validación de todos los campos usados y del historial de búsquedas, y retirada de código muerto. [Auditoría](docs/1.5.0/AUDITORIA_SEGURIDAD.md).

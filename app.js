@@ -124,6 +124,10 @@ function escapeHTML(str) {
         .replace(/'/g, '&#39;');
 }
 
+// "Reduce motion" in the system settings also turns off JavaScript smooth scrolling and map animations.
+const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+const scrollBehavior = () => (prefersReducedMotion() ? 'auto' : 'smooth');
+
 // Data arrives through third-party proxies: keep only well-formed trains before showing or caching it.
 const isShortText = (v, max = 40) => typeof v === 'string' && v.length > 0 && v.length <= max;
 const isCode = (v) => v === undefined || v === null || isShortText(String(v), 12);
@@ -655,7 +659,7 @@ function showSearchForm() {
     if (searchCard) {
         searchCard.style.display = 'block';
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: scrollBehavior() });
     const input = document.getElementById('trainInput');
     if (input) {
         setTimeout(() => {
@@ -893,8 +897,8 @@ function renderTimeline(train, route) {
             if (coords && state.map) {
                 setTimeout(() => {
                     state.map.invalidateSize();
-                    state.map.setView(coords, 12, { animate: true });
-                    if (accMap) accMap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    state.map.setView(coords, 12, { animate: !prefersReducedMotion() });
+                    if (accMap) accMap.scrollIntoView({ behavior: scrollBehavior(), block: 'nearest' });
                 }, 180);
             }
         };
@@ -993,14 +997,15 @@ function renderMap(train, route, shouldFitBounds = true) {
             const coords = getStationCoords(stop.p);
             if (coords) {
                 const isNext = normalizeTrainId(stop.p) === normalizeTrainId(train.codEstSig);
+                // 24 px tap area around the 14 px dot (WCAG 2.5.8), named for screen readers.
                 const icon = L.divIcon({
                     className: 'station-pin-container',
                     html: `<div class="station-pin-marker ${isNext ? 'current' : ''}"></div>`,
-                    iconSize: [14, 14],
-                    iconAnchor: [7, 7]
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
                 });
 
-                const marker = L.marker(coords, { icon })
+                const marker = L.marker(coords, { icon, title: `Parada ${formatStationMax15(stop.p)}` })
                     .bindPopup(`
                         <strong>${escapeHTML(formatStationMax15(stop.p))}</strong><br>
                         Horario: ${escapeHTML(stop.h || stop.hs || '--:--')}
@@ -1099,7 +1104,7 @@ function renderQuickChips() {
             const input = document.getElementById('trainInput');
             if (input) input.value = t.codComercial;
             searchTrain(t.codComercial);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: scrollBehavior() });
         };
         container.appendChild(chip);
     });
@@ -1138,8 +1143,12 @@ function handleInputKeydown(e) {
 }
 
 function highlightAutocompleteItem(items) {
+    const input = document.getElementById('trainInput');
     items.forEach((it, idx) => {
+        it.setAttribute('aria-selected', String(idx === state.autocompleteSelectedIndex));
         if (idx === state.autocompleteSelectedIndex) {
+            // The focus stays in the text box; aria-activedescendant tells the screen reader which option is chosen.
+            input?.setAttribute('aria-activedescendant', it.id);
             it.classList.add('selected');
             it.scrollIntoView({ block: 'nearest' });
         } else {
@@ -1181,6 +1190,8 @@ function handleInputSearch(e) {
         const item = document.createElement('div');
         item.className = 'autocomplete-item';
         item.setAttribute('role', 'option');
+        item.id = `autocomplete-option-${t.codComercial}`;
+        item.setAttribute('aria-selected', 'false');
         item.innerHTML = `
             <div class="item-main">
                 <span class="table-badge" style="background-color: ${escapeHTML(prod.color)}">${escapeHTML(prod.name)}</span>
@@ -1322,7 +1333,7 @@ function updateFleetTable() {
             const input = document.getElementById('trainInput');
             if (input) input.value = t.codComercial;
             searchTrain(t.codComercial);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: scrollBehavior() });
         };
 
         tbody.appendChild(tr);
@@ -1341,16 +1352,16 @@ function switchTab(tabId) {
     const secFleet = document.getElementById('sectionFleet');
 
     if (tabId === 'search') {
-        if (tabSearch) { tabSearch.classList.add('active'); tabSearch.setAttribute('aria-selected', 'true'); }
-        if (tabFleet) { tabFleet.classList.remove('active'); tabFleet.setAttribute('aria-selected', 'false'); }
+        if (tabSearch) { tabSearch.classList.add('active'); tabSearch.setAttribute('aria-selected', 'true'); tabSearch.tabIndex = 0; }
+        if (tabFleet) { tabFleet.classList.remove('active'); tabFleet.setAttribute('aria-selected', 'false'); tabFleet.tabIndex = -1; }
         if (secSearch) secSearch.classList.add('active');
         if (secFleet) secFleet.classList.remove('active');
         if (state.map) {
             setTimeout(() => state.map.invalidateSize(), 150);
         }
     } else if (tabId === 'fleet') {
-        if (tabFleet) { tabFleet.classList.add('active'); tabFleet.setAttribute('aria-selected', 'true'); }
-        if (tabSearch) { tabSearch.classList.remove('active'); tabSearch.setAttribute('aria-selected', 'false'); }
+        if (tabFleet) { tabFleet.classList.add('active'); tabFleet.setAttribute('aria-selected', 'true'); tabFleet.tabIndex = 0; }
+        if (tabSearch) { tabSearch.classList.remove('active'); tabSearch.setAttribute('aria-selected', 'false'); tabSearch.tabIndex = -1; }
         if (secFleet) secFleet.classList.add('active');
         if (secSearch) secSearch.classList.remove('active');
     }
@@ -1548,6 +1559,24 @@ function bindUiEvents() {
     input?.addEventListener('input', handleInputSearch);
     input?.addEventListener('keydown', handleInputKeydown);
     document.getElementById('fleetFilterInput')?.addEventListener('input', () => filterFleetTable());
+    // Tabs pattern: arrow keys move between "Buscar Tren" and "En Circulación".
+    document.querySelector('[role="tablist"]')?.addEventListener('keydown', (e) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+        e.preventDefault();
+        const next = state.activeTab === 'search' ? 'fleet' : 'search';
+        const target = e.key === 'Home' ? 'search' : e.key === 'End' ? 'fleet' : next;
+        switchTab(target);
+        document.getElementById(target === 'search' ? 'tabSearch' : 'tabFleet')?.focus();
+    });
+    // Keep aria-expanded in step with the suggestions list, whichever code path opens or closes it.
+    const dropdown = document.getElementById('autocompleteDropdown');
+    if (dropdown && input) {
+        new MutationObserver(() => {
+            const open = dropdown.style.display !== 'none' && dropdown.children.length > 0;
+            input.setAttribute('aria-expanded', String(open));
+            if (!open) input.removeAttribute('aria-activedescendant');
+        }).observe(dropdown, { attributes: true, attributeFilter: ['style'], childList: true });
+    }
     document.getElementById('accordionMap')?.addEventListener('toggle', (e) => {
         if (e.target.open) setTimeout(() => refreshMap(), 150);
     });

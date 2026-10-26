@@ -69,7 +69,7 @@
                 <svg class="tab-icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 <span>Buscar Tren</span>
             </button>
-            <button type="button" class="nav-tab" id="tabFleet" role="tab" aria-selected="false" aria-controls="sectionFleet" data-action="switchTab" data-arg="fleet">
+            <button type="button" class="nav-tab" id="tabFleet" role="tab" aria-selected="false" tabindex="-1" aria-controls="sectionFleet" data-action="switchTab" data-arg="fleet">
                 <svg class="tab-icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                 <span>En Circulación</span>
                 <span class="tab-badge" id="totalTrainsCount">0</span>
@@ -100,11 +100,15 @@
                             autocapitalize="off" 
                             spellcheck="false"
                             aria-label="Número de tren o estación a consultar"
+                            role="combobox"
+                            aria-autocomplete="list"
+                            aria-controls="autocompleteDropdown"
+                            aria-expanded="false"
                         >
                         <button type="button" class="btn-clear" id="btnClear" data-action="clearSearch" style="display:none;" title="Borrar texto" aria-label="Borrar texto de búsqueda">✕</button>
                         
                         <!-- Desplegable con sugerencias en vivo -->
-                        <div class="autocomplete-dropdown" id="autocompleteDropdown" role="listbox" style="display:none;"></div>
+                        <div class="autocomplete-dropdown" id="autocompleteDropdown" role="listbox" aria-label="Trenes que coinciden" tabindex="-1" style="display:none;"></div>
                     </div>
                     <button type="submit" class="btn-primary" aria-label="Consultar tren">
                         <span>Consultar</span>
@@ -393,7 +397,7 @@
                         <span class="footer-sep">·</span>
                         <a href="https://github.com/mosqueteroweb" target="_blank" rel="noopener">GitHub @mosqueteroweb</a>
                         <span class="footer-sep">·</span>
-                        <a href="https://github.com/mosqueteroweb/infoTren/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Versión 1.5.0</a>
+                        <a href="https://github.com/mosqueteroweb/infoTren/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Versión 1.6.0</a>
                     </p>
                 </div>
             </div>
