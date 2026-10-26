@@ -7,8 +7,15 @@
 // CONFIGURACIÓN Y MAPEOS
 // ============================================================================
 
-const customProxy = (typeof localStorage !== 'undefined' && localStorage.getItem('infotren_custom_proxy')) || 
-    (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('proxy'));
+// A personal proxy (e.g. the Cloudflare worker in proxy-worker/) can be set from the browser console:
+//   localStorage.setItem('infotren_custom_proxy', 'https://….workers.dev/?url=')
+// It is no longer accepted from the page URL: a shared link could otherwise feed the app invented delays and positions.
+const customProxy = (() => {
+    try {
+        const value = localStorage.getItem('infotren_custom_proxy');
+        return value && /^https:\/\/[^\s"'<>]+$/.test(value) ? value : null;
+    } catch (e) { return null; }
+})();
 
 const CONFIG = {
     CORS_PROXIES: [
@@ -115,6 +122,31 @@ function escapeHTML(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+// Data arrives through third-party proxies: keep only well-formed trains before showing or caching it.
+const isShortText = (v, max = 40) => typeof v === 'string' && v.length > 0 && v.length <= max;
+const isCode = (v) => v === undefined || v === null || isShortText(String(v), 12);
+
+function validTrain(t) {
+    if (!t || typeof t !== 'object' || !isShortText(t.codComercial, 10)) return false;
+    if (![t.codOrigen, t.codDestino, t.codEstSig, t.codEstAnt, t.mat, t.ultRetraso].every(isCode)) return false;
+    const hasPosition = t.latitud !== undefined || t.longitud !== undefined;
+    return !hasPosition || (Number.isFinite(t.latitud) && Number.isFinite(t.longitud) &&
+        Math.abs(t.latitud) <= 90 && Math.abs(t.longitud) <= 180);
+}
+
+function validateFleet(data) {
+    if (!data || !Array.isArray(data.trenes)) return null;
+    return { ...data, trenes: data.trenes.filter(validTrain).slice(0, 2000) };
+}
+
+function validateRoutes(data) {
+    if (!data || !Array.isArray(data.trenes)) return null;
+    const trenes = data.trenes.filter((r) => r && isShortText(String(r.idTren), 10) && Array.isArray(r.estaciones))
+        .map((r) => ({ ...r, estaciones: r.estaciones.filter((s) => s && isShortText(String(s.p), 12)).slice(0, 200) }))
+        .slice(0, 2000);
+    return { ...data, trenes };
 }
 
 function sanitizeInput(str) {
@@ -414,7 +446,7 @@ async function shareTrain() {
 // CARGA DE DATOS (FETCHING CON FALLBACKS Y CACHÉ OFFLINE)
 // ============================================================================
 
-async function fetchWithFallback(url, localFallbackUrl, cacheKey) {
+async function fetchWithFallback(url, localFallbackUrl, cacheKey, validate) {
     // 1. Probar con la lista de proxies CORS en tiempo real
     for (let i = 0; i < CONFIG.CORS_PROXIES.length; i++) {
         const proxyIndex = (CONFIG.CURRENT_PROXY_INDEX + i) % CONFIG.CORS_PROXIES.length;
@@ -433,7 +465,8 @@ async function fetchWithFallback(url, localFallbackUrl, cacheKey) {
             clearTimeout(timeoutId);
 
             if (res.ok) {
-                const data = await res.json();
+                const data = validate(await res.json());
+                if (!data) continue; // A proxy that answers with something other than Renfe data is skipped
                 CONFIG.CURRENT_PROXY_INDEX = proxyIndex;
                 if (cacheKey) {
                     try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
@@ -449,8 +482,9 @@ async function fetchWithFallback(url, localFallbackUrl, cacheKey) {
     if (cacheKey) {
         try {
             const cached = localStorage.getItem(cacheKey);
-            if (cached) {
-                return { data: JSON.parse(cached), source: 'cache' };
+            const data = cached && validate(JSON.parse(cached));
+            if (data) {
+                return { data, source: 'cache' };
             }
         } catch (e) {}
     }
@@ -459,8 +493,8 @@ async function fetchWithFallback(url, localFallbackUrl, cacheKey) {
     if (localFallbackUrl) {
         try {
             const localRes = await fetch(localFallbackUrl);
-            if (localRes.ok) {
-                const data = await localRes.json();
+            const data = localRes.ok && validate(await localRes.json());
+            if (data) {
                 return { data, source: 'fallback' };
             }
         } catch (e) {}
@@ -498,8 +532,8 @@ async function refreshData(silent = false) {
 
     try {
         const [fleetResult, routesResult] = await Promise.all([
-            fetchWithFallback(CONFIG.FLEET_URL, CONFIG.LOCAL_FLEET_URL, CACHE_FLEET_KEY),
-            fetchWithFallback(CONFIG.ROUTES_URL, CONFIG.LOCAL_ROUTES_URL, CACHE_ROUTES_KEY)
+            fetchWithFallback(CONFIG.FLEET_URL, CONFIG.LOCAL_FLEET_URL, CACHE_FLEET_KEY, validateFleet),
+            fetchWithFallback(CONFIG.ROUTES_URL, CONFIG.LOCAL_ROUTES_URL, CACHE_ROUTES_KEY, validateRoutes)
         ]);
 
         const fleetRes = fleetResult.data;

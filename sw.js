@@ -1,4 +1,4 @@
-const CACHE_NAME = 'infotren-pwa-v7';
+const CACHE_NAME = 'infotren-1.1.0';
 const ASSETS = [
     './',
     './index.html',
@@ -8,6 +8,9 @@ const ASSETS = [
     './icon-512.png',
     './apple-touch-icon.png',
     './style.css',
+    './fonts/fonts.css',
+    './fonts/plus-jakarta-sans-latin.woff2',
+    './fonts/jetbrains-mono-latin.woff2',
     './app.js',
     './data/stations.json',
     './data/flotaLD.json',
