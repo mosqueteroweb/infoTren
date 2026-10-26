@@ -864,7 +864,8 @@ function renderTimeline(train, route) {
             statusText = '✓ Parada superada';
         } else if (index === nextIndex) {
             statusClass = 'current';
-            const est = addMinutesToTime(schedTime, delayMin);
+            // Same estimate as the "Próxima parada" card: Renfe's own arrival time, not schedule + delay.
+            const est = train.horaLlegadaSigEst?.split('T')[1]?.substring(0, 5) || addMinutesToTime(schedTime, delayMin);
             statusText = est ? `🚆 Próxima · Est. ${est}` : '🚆 Próxima parada';
         } else if (delayMin > 0) {
             const est = addMinutesToTime(schedTime, delayMin);
@@ -878,7 +879,7 @@ function renderTimeline(train, route) {
                     <span class="step-station-name">${escapeHTML(stName)}</span>
                     <span class="step-status-badge ${statusClass}">${escapeHTML(statusText)}</span>
                 </div>
-                <div class="step-time-badge">${escapeHTML(schedTime)}</div>
+                <div class="step-time-badge"><span class="step-time-label">Prog.</span>${escapeHTML(schedTime)}</div>
             </div>
         `;
 
@@ -899,8 +900,26 @@ function renderTimeline(train, route) {
             }
         };
 
+        // Long regional routes have 50+ stops: fold the ones already passed except the last.
+        if (index < nextIndex - 1) step.classList.add('step-folded');
         container.appendChild(step);
     });
+
+    const folded = Math.max(0, nextIndex - 1);
+    if (folded > 0) {
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'btn-sm timeline-toggle';
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.textContent = `Ver ${folded === 1 ? 'la parada anterior' : `las ${folded} paradas anteriores`}`;
+        toggle.onclick = () => {
+            const open = container.classList.toggle('show-folded');
+            toggle.setAttribute('aria-expanded', String(open));
+            toggle.textContent = open ? 'Ocultar paradas anteriores'
+                : `Ver ${folded === 1 ? 'la parada anterior' : `las ${folded} paradas anteriores`}`;
+        };
+        container.prepend(toggle);
+    }
 }
 
 // ============================================================================
@@ -1291,7 +1310,7 @@ function updateFleetTable() {
         tr.innerHTML = `
             <td><span class="table-train-tag">#${escapeHTML(t.codComercial)}</span></td>
             <td><span class="table-badge" style="background-color: ${escapeHTML(prod.color)}">${escapeHTML(prod.name)}</span></td>
-            <td><strong>${escapeHTML(formatStationMax15(t.codOrigen))}</strong></td>
+            <td><strong>${escapeHTML(formatStationMax15(t.codOrigen))}</strong><span class="route-inline"> → <strong>${escapeHTML(formatStationMax15(t.codDestino))}</strong></span></td>
             <td><strong>${escapeHTML(formatStationMax15(t.codDestino))}</strong></td>
             <td>${escapeHTML(formatStationMax15(t.codEstSig))}</td>
             <td><span class="table-delay ${escapeHTML(delay.class)}">${escapeHTML(delay.text)}</span></td>

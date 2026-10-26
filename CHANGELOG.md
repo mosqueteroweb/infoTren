@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.4.0 — 26 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Auditoría de UX repetida en móvil, tablet y escritorio: itinerario completo sin caja con desplazamiento y con las paradas superadas plegadas, atribución de OpenStreetMap visible, una sola hora estimada, hora programada rotulada, origen y destino legibles en el móvil y en la lista. [Auditoría](docs/1.4.0/AUDITORIA_UX.md).
+
 ## 1.3.1 — 26 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Corrección: en tablet y escritorio la tabla «En circulación» medía 890 px en un espacio de 859 y la columna «Acción» quedaba cortada. Ahora la fila entera abre el tren (como en el móvil) y el botón se mantiene para teclado y lector de pantalla. Revisado a 800, 1000, 1280 y 1600 px; la auditoría de 1.3.0 solo había comprobado el ancho de móvil.

@@ -936,6 +936,7 @@ body {
 }
 
 .route-time-text {
+    white-space: nowrap;
     font-size: 1rem;
     font-weight: 800;
     color: var(--renfe-purple);
@@ -1072,9 +1073,8 @@ body {
     margin-bottom: 0.75rem;
 }
 
+/* No inner scroll: with a fixed height the last stops (the destination) were hidden below the fold of the box. */
 .timeline-wrapper {
-    max-height: 460px;
-    overflow-y: auto;
     width: 100%;
     box-sizing: border-box;
     padding-right: 0.15rem;
@@ -1204,9 +1204,10 @@ body {
     z-index: 10;
 }
 
+/* Top right: at the bottom it covered the "© OpenStreetMap" attribution the map licence requires. */
 .map-legend {
     position: absolute;
-    bottom: 8px;
+    top: 8px;
     right: 8px;
     background: rgba(255, 255, 255, 0.95);
     border: 1.5px solid var(--border-color);
@@ -1519,7 +1520,6 @@ body {
     /* Origin and destination share one line: "Madrid Atocha → Pamplona Iruña" */
     .fleet-table td:nth-child(3) { grid-area: orig; display: inline; }
     .fleet-table td:nth-child(4) { grid-area: orig; display: inline; justify-self: end; text-align: right; }
-    .fleet-table td:nth-child(3)::after { content: ' →'; color: var(--text-muted); }
     .fleet-table td:nth-child(5) { grid-area: next; font-weight: 600; color: var(--text-muted); }
     .fleet-table td:nth-child(5)::before { content: 'Próxima: '; font-weight: 700; }
     .fleet-table td:nth-child(7) { display: none; }
@@ -1922,3 +1922,52 @@ body {
         outline-offset: -3px;
     }
 }
+
+/* Narrow phones: origin above destination, so long names such as "Pamplona Iruña" are not split. */
+@media (max-width: 480px) {
+    .route-box-compact {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.35rem;
+    }
+    .route-col-dest {
+        text-align: left;
+        align-items: flex-start;
+    }
+    .route-arrow-icon {
+        transform: rotate(90deg);
+        align-self: flex-start;
+        padding: 0 0.4rem;
+    }
+}
+
+/* Fleet cards: keep "Madrid Atocha → Pamplona Iruña" together instead of pushing the destination to the far edge. */
+@media (max-width: 768px) {
+    .fleet-table tbody tr {
+        grid-template-areas:
+            "num   prod  delay"
+            "route route route"
+            "next  next  next";
+    }
+    .fleet-table td:nth-child(3),
+    .fleet-table td:nth-child(4) { grid-area: auto; }
+    .fleet-table tbody tr > td:nth-child(3) { grid-row: 2; grid-column: 1 / -1; }
+    .fleet-table tbody tr > td:nth-child(4) { display: none; }
+}
+
+.step-time-label {
+    font-size: 0.7em;
+    font-weight: 700;
+    opacity: 0.75;
+    margin-right: 0.2em;
+}
+
+/* Destination written next to the origin only in the card layout; the desktop table keeps its own column. */
+.route-inline { display: none; }
+@media (max-width: 768px) {
+    .route-inline { display: inline; }
+}
+
+.timeline-step.step-folded { display: none; }
+.show-folded .timeline-step.step-folded { display: block; }
+.timeline-toggle { margin-bottom: 0.6rem; min-height: 44px; }
