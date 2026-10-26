@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.3.1 — 26 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Corrección: en tablet y escritorio la tabla «En circulación» medía 890 px en un espacio de 859 y la columna «Acción» quedaba cortada. Ahora la fila entera abre el tren (como en el móvil) y el botón se mantiene para teclado y lector de pantalla. Revisado a 800, 1000, 1280 y 1600 px; la auditoría de 1.3.0 solo había comprobado el ancho de móvil.
+
 ## 1.3.0 — 26 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Auditoría de accesibilidad: etiquetas de servicio con contraste suficiente y diseño que no se rompe con letra grande (cabecera, pestañas, etiquetas y tarjetas). axe-core sin incumplimientos. [Auditoría](docs/1.3.0/AUDITORIA_ACCESIBILIDAD.md).

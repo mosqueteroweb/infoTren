@@ -1897,3 +1897,28 @@ body {
     max-width: 100%;
     min-width: 0;
 }
+
+/* Tablet and desktop: the main column is ~860 px and the eight columns did not fit, so "Acción" was cut off.
+   As on mobile, the whole row opens the train and the button is kept only for keyboard and screen readers. */
+@media (min-width: 769px) {
+    .fleet-table th,
+    .fleet-table td {
+        padding: 0.75rem 0.7rem;
+    }
+
+    .fleet-table th:last-child,
+    .fleet-table td:last-child {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        border: 0;
+    }
+
+    .fleet-table tbody tr:focus-within {
+        outline: 3px solid var(--renfe-purple);
+        outline-offset: -3px;
+    }
+}
