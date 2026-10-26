@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.3.0 — 26 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Auditoría de accesibilidad: etiquetas de servicio con contraste suficiente y diseño que no se rompe con letra grande (cabecera, pestañas, etiquetas y tarjetas). axe-core sin incumplimientos. [Auditoría](docs/1.3.0/AUDITORIA_ACCESIBILIDAD.md).
+
 ## 1.2.0 — 26 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Auditoría de UX: lista «En circulación» compacta (de casi media pantalla por tren a tres líneas) y trenes sin posición GPS incluidos en la búsqueda. [Auditoría](docs/1.2.0/AUDITORIA_UX.md).

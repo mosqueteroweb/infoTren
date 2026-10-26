@@ -734,12 +734,12 @@ body {
 
 .product-badge.ave { background-color: #d32f2f; }
 .product-badge.avlo { background-color: #8e44ad; }
-.product-badge.alvia { background-color: #e67e22; }
-.product-badge.avant { background-color: #0284c7; }
+.product-badge.alvia { background-color: #b25e14; }
+.product-badge.avant { background-color: #027ab8; }
 .product-badge.euromed { background-color: #1e3a8a; }
-.product-badge.md { background-color: #0d9488; }
+.product-badge.md { background-color: #0b8177; }
 .product-badge.intercity { background-color: #475569; }
-.product-badge.regional { background-color: #16a34a; }
+.product-badge.regional { background-color: #12843c; }
 
 .train-number {
     font-size: 1.55rem;
@@ -1792,7 +1792,7 @@ body {
 }
 
 .pwa-step-ios {
-    border-color: #0284c7;
+    border-color: #027ab8;
     background: #f0f9ff;
 }
 
@@ -1827,7 +1827,7 @@ body {
     justify-content: center;
     vertical-align: middle;
     background: #e0f2fe;
-    color: #0284c7;
+    color: #027ab8;
     padding: 2px 4px;
     border-radius: 4px;
     border: 1px solid #bae6fd;
@@ -1858,4 +1858,42 @@ body {
 
 .pwa-modal-close {
     width: 100% !important;
+}
+
+/* ==========================================================================
+   TEXTO GRANDE (botón A+ o letra del sistema al 200 %)
+   Tabs, quick chips and fleet cards wrap instead of overlapping.
+   ========================================================================== */
+.nav-tab {
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.chip {
+    flex-wrap: wrap;
+    max-width: 100%;
+    min-width: 0;
+    text-align: left;
+}
+
+.chip > * {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+    .fleet-table tbody tr {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+    .fleet-table td {
+        overflow-wrap: anywhere;
+    }
+}
+
+/* The header buttons (A+, Instalar, estado, actualizar) wrap instead of widening the whole page. */
+.header-container,
+.header-actions {
+    flex-wrap: wrap;
+    max-width: 100%;
+    min-width: 0;
 }
