@@ -188,7 +188,14 @@ function validateSchedule(data) {
         Number.isInteger(t.p) && isIsoTime(t.s) && isIsoTime(t.l) && Array.isArray(t.e) && t.e.length >= 2 &&
         t.e.every((s) => Array.isArray(s) && isShortText(String(s[0]), 12) && isClockTime(s[1]) && isClockTime(s[2])))
         .slice(0, 6000)
-        .map((t) => ({ ...t, departure: new Date(t.s), arrival: new Date(t.l), e: t.e.slice(0, 200) }));
+        .map((t) => ({
+            ...t,
+            departure: new Date(t.s),
+            arrival: new Date(t.l),
+            e: t.e.slice(0, 200),
+            // Other trip ids of the same train and departure, merged by build_programados.py.
+            ids: Array.isArray(t.ids) ? t.ids.filter((id) => isShortText(id, 40)).slice(0, 10) : []
+        }));
     return { ...data, trenes };
 }
 
@@ -673,7 +680,8 @@ function formatDeparture(date) {
 // The feed names the cancelled trip but not the day, and one trip id covers several days of a timetable period:
 // only today's departure is marked, so a train that does run tomorrow is never shown as cancelled.
 function isCancelled(entry) {
-    return state.cancelledTrips.has(entry.id) && madridDay(entry.departure) === madridDay(new Date());
+    return [entry.id, ...entry.ids].some(id => state.cancelledTrips.has(id)) &&
+        madridDay(entry.departure) === madridDay(new Date());
 }
 
 function scheduledToTrain(entry) {
@@ -741,6 +749,15 @@ function upcomingDepartures() {
         const dep = t.departure.getTime();
         return dep >= from && dep <= to && !running.has(normalizeTrainId(t.n));
     });
+}
+
+// Trains that left their origin on schedule, have not arrived and are missing from Renfe's live feed (about 4 in 10
+// in the middle of the day, mostly Media Distancia and Regionales). They only make sense in a station search.
+function untrackedEnRoute() {
+    const now = Date.now();
+    const running = new Set(state.fleet.map(t => normalizeTrainId(t.codComercial)));
+    return state.schedule.filter(t => t.departure.getTime() < now - 15 * 60000 &&
+        t.arrival.getTime() > now && !running.has(normalizeTrainId(t.n)));
 }
 
 function findTrain(query) {
@@ -863,7 +880,7 @@ function hideSearchError() {
 function openStationSearch(text) {
     const query = normalizeForSearch(text);
     const runs = state.fleet.some(t => trainMatchesQuery(t, query));
-    const departs = upcomingDepartures().some(t => trainMatchesQuery(scheduledToTrain(t), query));
+    const departs = [...upcomingDepartures(), ...untrackedEnRoute()].some(t => trainMatchesQuery(scheduledToTrain(t), query));
     if (!runs && !departs) return false;
 
     hideSearchError();
@@ -1661,7 +1678,8 @@ function upcomingTimeText(train) {
     if (stopIndex > 0) {
         const code = train.scheduled.e[stopIndex][0];
         const when = formatDeparture(scheduledStopDates(train.scheduled)[stopIndex]);
-        return `En ${formatStationMax15(code)} ${when} · sale ${formatDeparture(train.scheduled.departure)}`;
+        const verb = hasLeftOnSchedule(train) ? 'salió' : 'sale';
+        return `En ${formatStationMax15(code)} ${when} · ${verb} ${formatDeparture(train.scheduled.departure)}`;
     }
     const verb = train.scheduled.departure.getTime() > Date.now() ? 'Sale' : 'Debía salir';
     return `${verb} ${formatDeparture(train.scheduled.departure)}`;
@@ -1675,7 +1693,9 @@ function stationTime(train) {
 }
 
 function renderUpcomingRows(tbody, upcoming) {
-    let trains = upcoming.map(scheduledToTrain)
+    // A station search also shows the untracked trains still on their way there; stationTime drops the ones past it.
+    const source = state.fleetSearchQuery ? [...upcoming, ...untrackedEnRoute()] : upcoming;
+    let trains = source.map(scheduledToTrain)
         .filter(t => !state.fleetSearchQuery || trainMatchesQuery(t, state.fleetSearchQuery));
     if (state.fleetSearchQuery) {
         const from = Date.now() - 5 * 60000;
@@ -1693,7 +1713,9 @@ function renderUpcomingRows(tbody, upcoming) {
     tbody.innerHTML = '';
     trains.slice(0, CONFIG.UPCOMING_MAX_ROWS).forEach(t => {
         const prod = getProductInfo(t.codProduct);
-        const status = t.cancelled ? { text: 'Cancelado', class: 'heavy' } : { text: 'Programado', class: 'scheduled' };
+        let status = { text: 'Programado', class: 'scheduled' };
+        if (t.cancelled) status = { text: 'Cancelado', class: 'heavy' };
+        else if (hasLeftOnSchedule(t)) status = { text: 'Sin datos en directo', class: 'scheduled' };
         const tr = document.createElement('tr');
         tr.className = t.cancelled ? 'scheduled-row cancelled-row' : 'scheduled-row';
         tr.innerHTML = `

@@ -125,8 +125,24 @@ def build(archive, now):
                 # Same shape as trenesConEstacionesLD.json: station, arrival, departure.
                 "e": [[stop_id, hhmm(arr), hhmm(dep)] for _, stop_id, arr, dep in trip_stops],
             })
-    trains.sort(key=lambda t: (t["s"], t["n"]))
-    return trains
+    return merge_variants(trains)
+
+
+def merge_variants(trains):
+    # Renfe often publishes two trips for the same train and departure (ids ending ...1 and ...2 before the date),
+    # usually with different stop lists. Keep the one with most stops and remember every id for the cancellations.
+    groups = defaultdict(list)
+    for train in trains:
+        groups[(train["n"].lstrip("0"), train["s"])].append(train)
+    merged = []
+    for variants in groups.values():
+        best = max(variants, key=lambda t: len(t["e"]))
+        others = [t["id"] for t in variants if t is not best]
+        if others:
+            best["ids"] = others
+        merged.append(best)
+    merged.sort(key=lambda t: (t["s"], t["n"]))
+    return merged
 
 
 def hhmm(text):

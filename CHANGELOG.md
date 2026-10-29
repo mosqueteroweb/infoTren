@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.8.1 — 29 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Búsqueda por estación más completa: «Próximas salidas» filtradas por una estación incluyen también los trenes que ya salieron de su origen pero que Renfe no sigue en directo (unos 4 de cada 10 a mediodía, sobre todo Media Distancia y Regionales), siempre que aún no hayan pasado por esa estación. Aparecen con la hora prevista en la estación y el estado «Sin datos en directo», nunca como «En hora». Corrección: unos 160 trenes salían dos veces en «Próximas salidas», porque Renfe publica dos variantes del mismo tren y salida; ahora se juntan en una (la de más paradas) y se tienen en cuenta las cancelaciones de las dos.
+
 ## 1.8.0 — 29 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Auditorías de seguridad y de UX repetidas tras los cambios de la 1.7. Seguridad: las cancelaciones solo llegan por el proxy propio (un proxy ajeno podía inventarlas), el proxy de Cloudflare solo atiende a la app, se retiran dos proxies públicos que ya no respondían y el script de horarios limita el tamaño de la descarga. UX: «Próximas salidas» filtradas por una estación se ordenan por la hora en esa estación y sin los trenes que ya pasaron; los avisos «Programado» y «Sin datos en directo» dejan de ser verdes; un tren sin datos en directo indica dónde debería estar según el horario; los cancelados se distinguen en la lista. [Seguridad](docs/1.8.0/AUDITORIA_SEGURIDAD.md) · [UX](docs/1.8.0/AUDITORIA_UX.md).

@@ -31,5 +31,5 @@ A las 13:45, de los 89 trenes no cancelados que según el horario iban de camino
 
 ## Pendiente
 
-- Los trenes de viaje sin datos en directo solo aparecen al buscar su número. Mostrarlos también en la búsqueda por estación queda a decisión del autor (solo los que aún no han pasado por ella, o todos).
+- (Hecho en 1.8.1.) Los trenes de viaje sin datos en directo aparecen en la búsqueda por estación si aún no han pasado por ella, con el estado «Sin datos en directo».
 - No se ha pasado axe-core en esta auditoría: la CSP no deja cargarlo en la página publicada. La última pasada sin incumplimientos es la de la 1.6.0.
