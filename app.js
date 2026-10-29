@@ -1189,9 +1189,29 @@ function highlightAutocompleteItem(items) {
     });
 }
 
+// Station names carry accents and hyphens ("València-Joaquín Sorolla"); people type "valencia joaquin".
+function normalizeForSearch(text) {
+    return String(text)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[-·.]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function trainMatchesQuery(train, query) {
+    return [
+        train.codComercial,
+        getStationName(train.codOrigen),
+        getStationName(train.codDestino),
+        getProductInfo(train.codProduct).name
+    ].some(field => normalizeForSearch(field).includes(query));
+}
+
 function handleInputSearch(e) {
     hideSearchError();
-    const query = e.target.value.trim().toLowerCase();
+    const query = normalizeForSearch(e.target.value);
     const btnClear = document.getElementById('btnClear');
     const dropdown = document.getElementById('autocompleteDropdown');
     state.autocompleteSelectedIndex = -1;
@@ -1204,13 +1224,7 @@ function handleInputSearch(e) {
         return;
     }
 
-    const matches = state.fleet.filter(t => {
-        const num = String(t.codComercial).toLowerCase();
-        const orig = getStationName(t.codOrigen).toLowerCase();
-        const dest = getStationName(t.codDestino).toLowerCase();
-        const prod = getProductInfo(t.codProduct).name.toLowerCase();
-        return num.includes(query) || orig.includes(query) || dest.includes(query) || prod.includes(query);
-    }).slice(0, 8);
+    const matches = state.fleet.filter(t => trainMatchesQuery(t, query)).slice(0, 8);
 
     if (matches.length === 0) {
         dropdown.style.display = 'none';
@@ -1283,7 +1297,7 @@ function setFleetFilter(type, btnEl) {
 
 function filterFleetTable() {
     const input = document.getElementById('fleetFilterInput');
-    state.fleetSearchQuery = input ? input.value.toLowerCase().trim() : '';
+    state.fleetSearchQuery = input ? normalizeForSearch(input.value) : '';
     updateFleetTable();
 }
 
@@ -1324,22 +1338,19 @@ function updateFleetTable() {
         if (state.fleetFilter === 'MD' && (t.codProduct !== 15 && t.codProduct !== 16 && t.codProduct !== 18 && t.codProduct !== 19)) return false;
         if (state.fleetFilter === 'delay' && parseInt(t.ultRetraso, 10) <= 5) return false;
 
-        if (state.fleetSearchQuery) {
-            const num = String(t.codComercial).toLowerCase();
-            const orig = getStationName(t.codOrigen).toLowerCase();
-            const dest = getStationName(t.codDestino).toLowerCase();
-            const prod = getProductInfo(t.codProduct).name.toLowerCase();
-            return num.includes(state.fleetSearchQuery) || 
-                   orig.includes(state.fleetSearchQuery) || 
-                   dest.includes(state.fleetSearchQuery) || 
-                   prod.includes(state.fleetSearchQuery);
-        }
+        if (state.fleetSearchQuery) return trainMatchesQuery(t, state.fleetSearchQuery);
 
         return true;
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="table-loading">No se encontraron trenes con los filtros seleccionados.</td></tr>';
+        // With a chip and a text both active it is easy to miss why nothing shows up, so the message names the chip.
+        const activePill = document.querySelector('.filter-pill.active');
+        const chipName = activePill ? activePill.textContent.split(':')[0].trim() : '';
+        const hint = state.fleetFilter !== 'all' && state.fleetSearchQuery
+            ? ` Solo se buscan trenes de «${escapeHTML(chipName)}»: pulsa «Todos» para buscar en toda la lista.`
+            : '';
+        tbody.innerHTML = `<tr><td colspan="8" class="table-loading">No se encontraron trenes con los filtros seleccionados.${hint}</td></tr>`;
         return;
     }
 

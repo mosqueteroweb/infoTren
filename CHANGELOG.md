@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.6.3 — 29 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Corrección: el filtro de «En circulación» y el buscador principal distinguían las tildes, así que «Valencia», «Malaga», «Cadiz», «Leon» o «Chamartin» no encontraban nada. Ahora no importan tildes, mayúsculas ni guiones («madrid chamartin» encuentra «Madrid-Chamartín-Clara Campoamor»). Si un chip está marcado y el texto no da resultados, el mensaje lo dice y sugiere «Todos».
+
 ## 1.6.2 — 29 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Los datos en directo llegan ahora por el proxy propio de Cloudflare (`infotren-cors-proxy.mosqueteroweb.workers.dev`), limitado a los dos archivos de Renfe y con caché de 30 segundos. Los proxies públicos quedan solo de reserva: en la prueba previa dos de los tres no respondían. La CSP permite solo ese worker en lugar de cualquier `*.workers.dev`. Se comprobó que los datos abiertos de data.renfe.com (GTFS-RT) no evitan el proxy: tampoco permiten llamadas desde el navegador y traen menos información.
