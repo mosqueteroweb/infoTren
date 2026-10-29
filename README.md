@@ -17,7 +17,7 @@ Aplicación web (PWA) para seguir los trenes de Larga y Media Distancia de Renfe
 
 ## Cómo funciona
 
-Es una web estática alojada en GitHub Pages. Los datos salen del visor público de Renfe (`tiempo-real.largorecorrido.renfe.com`). Como Renfe no permite llamadas directas desde el navegador, la app los pide a través de un proxy CORS. En [`proxy-worker/`](proxy-worker/) hay un proxy propio para Cloudflare Workers.
+Es una web estática alojada en GitHub Pages. Los datos salen del visor público de Renfe (`tiempo-real.largorecorrido.renfe.com`). Como Renfe no permite llamadas directas desde el navegador, la app los pide a través de un proxy CORS. Usa primero el proxy propio de Cloudflare Workers ([`proxy-worker/`](proxy-worker/)), desplegado en `infotren-cors-proxy.mosqueteroweb.workers.dev`, y solo si falla recurre a proxies públicos.
 
 El flujo `update-trains.yml` guarda cada 2 horas una copia de respaldo en `data/`, que la app usa si no puede leer los datos en directo.
 

@@ -25,15 +25,13 @@ npx wrangler deploy
 
 ## ⚙️ Cómo usar tu proxy en InfoTren
 
-Una vez desplegado tu worker, puedes activarlo en InfoTren de dos formas:
+InfoTren usa por defecto el worker desplegado en `https://infotren-cors-proxy.mosqueteroweb.workers.dev/?url=` (primero de `CORS_PROXIES` en `app.js`). Si cambia la dirección, hay que actualizarla también en `connect-src` de la CSP de `index.html`.
 
-1. **Vía parámetro de URL**:
-   Añade `?proxy=https://infotren-proxy.tu-usuario.workers.dev/?url=` a la URL de InfoTren.
-2. **Vía consola / localStorage** (permanente en tu navegador):
-   ```javascript
-   localStorage.setItem('infotren_custom_proxy', 'https://infotren-proxy.tu-usuario.workers.dev/?url=');
-   ```
+Para probar otro worker sin tocar el código (y con su dirección añadida a la CSP), desde la consola del navegador:
+```javascript
+localStorage.setItem('infotren_custom_proxy', 'https://otro-worker.tu-usuario.workers.dev/?url=');
+```
 
 El worker incluye además:
-- **Validación de seguridad**: Rechaza peticiones hacia dominios que no pertenezcan a `renfe.com`.
+- **Validación de seguridad**: solo sirve `flotaLD.json` y `trenesConEstacionesLD.json` de Renfe; cualquier otra dirección recibe un 403.
 - **Caché Edge de 30 segundos**: Acelera drásticamente las respuestas y evita sobrecargar los servidores de Renfe.

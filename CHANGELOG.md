@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.6.2 — 29 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Los datos en directo llegan ahora por el proxy propio de Cloudflare (`infotren-cors-proxy.mosqueteroweb.workers.dev`), limitado a los dos archivos de Renfe y con caché de 30 segundos. Los proxies públicos quedan solo de reserva: en la prueba previa dos de los tres no respondían. La CSP permite solo ese worker en lugar de cualquier `*.workers.dev`. Se comprobó que los datos abiertos de data.renfe.com (GTFS-RT) no evitan el proxy: tampoco permiten llamadas desde el navegador y traen menos información.
+
 ## 1.6.1 — 29 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Corrección: en el móvil, el aviso de «tren no encontrado» quedaba debajo de los consultados recientemente y no se veía sin desplazar. Ahora sale un aviso corto en rojo justo bajo el buscador, el campo se marca como erróneo para el lector de pantalla y el aviso se borra al volver a escribir. La tarjeta con consejos sigue debajo.

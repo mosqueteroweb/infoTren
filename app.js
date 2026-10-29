@@ -7,7 +7,8 @@
 // CONFIGURACIÓN Y MAPEOS
 // ============================================================================
 
-// A personal proxy (e.g. the Cloudflare worker in proxy-worker/) can be set from the browser console:
+// The app's own Cloudflare worker (proxy-worker/) goes first; the public proxies are only a backup.
+// For testing, another proxy can be set from the browser console (it must also be allowed in the CSP connect-src):
 //   localStorage.setItem('infotren_custom_proxy', 'https://….workers.dev/?url=')
 // It is no longer accepted from the page URL: a shared link could otherwise feed the app invented delays and positions.
 const customProxy = (() => {
@@ -20,6 +21,7 @@ const customProxy = (() => {
 const CONFIG = {
     CORS_PROXIES: [
         ...(customProxy ? [customProxy] : []),
+        'https://infotren-cors-proxy.mosqueteroweb.workers.dev/?url=',
         'https://cors-anywhere.fly.dev/',
         'https://api.allorigins.win/raw?url=',
         'https://api.codetabs.com/v1/proxy?quest=',
