@@ -149,6 +149,8 @@ const scrollBehavior = () => (prefersReducedMotion() ? 'auto' : 'smooth');
 // Data arrives through third-party proxies: keep only well-formed trains before showing or caching it.
 const isShortText = (v, max = 40) => typeof v === 'string' && v.length > 0 && v.length <= max;
 const isCode = (v) => v === undefined || v === null || isShortText(String(v), 12);
+// Two coupled units come as "103004,103005": the 12-character limit for codes dropped every double-length train.
+const isMaterial = (v) => v === undefined || v === null || v === '' || /^[\d, ]{1,60}$/.test(String(v));
 
 const isTimeText = (v) => v === undefined || v === null || (typeof v === 'string' && v.length <= 25);
 
@@ -156,7 +158,7 @@ function validTrain(t) {
     if (!t || typeof t !== 'object' || !isShortText(t.codComercial, 10)) return false;
     if (!isTimeText(t.horaLlegadaSigEst)) return false;
     if (t.codProduct !== undefined && !Number.isInteger(t.codProduct)) return false;
-    if (![t.codOrigen, t.codDestino, t.codEstSig, t.codEstAnt, t.mat, t.ultRetraso].every(isCode)) return false;
+    if (![t.codOrigen, t.codDestino, t.codEstSig, t.codEstAnt, t.ultRetraso].every(isCode) || !isMaterial(t.mat)) return false;
     const hasPosition = t.latitud !== undefined || t.longitud !== undefined;
     return !hasPosition || (Number.isFinite(t.latitud) && Number.isFinite(t.longitud) &&
         Math.abs(t.latitud) <= 90 && Math.abs(t.longitud) <= 180);
@@ -221,7 +223,7 @@ function getMaterialInfo(mat) {
     const series = ROLLING_STOCK[prefix] || `Serie ${prefix}`;
     return {
         name: series,
-        code: strMat
+        code: strMat.split(',').map(s => s.trim()).filter(Boolean).join(' + ')
     };
 }
 
@@ -682,6 +684,9 @@ function scheduledToTrain(entry) {
     };
 }
 
+// Past its departure time a scheduled train may be running untracked, late at the origin or cancelled: we cannot tell.
+const hasLeftOnSchedule = (train) => train.scheduled.departure.getTime() <= Date.now();
+
 function scheduledRoute(entry) {
     return { idTren: entry.n, estaciones: entry.e.map(([p, h, hs]) => ({ p, h, hs })) };
 }
@@ -882,7 +887,7 @@ function displayTrain(train, resetMapView = true) {
     const servEl = document.getElementById('detailServiceName');
     if (servEl) {
         if (train.cancelled) servEl.textContent = `${prod.name} · Cancelado`;
-        else if (train.scheduled) servEl.textContent = `${prod.name} · Aún no ha salido`;
+        else if (train.scheduled) servEl.textContent = `${prod.name} · ${hasLeftOnSchedule(train) ? 'Sin datos en directo' : 'Aún no ha salido'}`;
         else servEl.textContent = train.synthetic ? `${prod.name} · Horario programado` : `${prod.name} · En circulación`;
     }
 
@@ -905,7 +910,7 @@ function displayTrain(train, resetMapView = true) {
         // Renfe publishes no delay before departure: once it leaves, the live data takes over.
         text = train.scheduled.departure.getTime() > Date.now()
             ? `PROGRAMADO · Sale ${formatDeparture(train.scheduled.departure)}`
-            : `PROGRAMADO · Debía salir a las ${formatDeparture(train.scheduled.departure)} · Aún sin datos en directo`;
+            : `SIN DATOS EN DIRECTO · Debía salir a las ${formatDeparture(train.scheduled.departure)}`;
     } else if (train.synthetic) {
         delayClass = 'delay-ontime';
         icon = '🕒';
@@ -999,7 +1004,7 @@ function displayTrain(train, resetMapView = true) {
     if (accEl) accEl.textContent = train.accesible ? '♿ Servicio Atendo · PMR Habilitado' : 'Accesibilidad estándar';
     const lastStEl = document.getElementById('detailLastStation');
     if (lastStEl) {
-        if (train.scheduled) lastStEl.textContent = 'Aún no ha salido';
+        if (train.scheduled) lastStEl.textContent = hasLeftOnSchedule(train) ? 'Sin datos en directo' : 'Aún no ha salido';
         else lastStEl.textContent = train.codEstAnt ? formatStationMax15(train.codEstAnt) : 'Inicio de recorrido';
     }
 

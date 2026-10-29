@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.7.4 — 29 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Corrección importante: la app descartaba los trenes en doble composición (dos unidades acopladas), unos 10 de cada 70 en circulación. Su material llega como `103004,103005`, 13 caracteres, y la validación de la 1.5.0 solo admitía 12. Entre ellos estaban AVE como el 03113 o el 03122, que en vez de verse en directo con su retraso salían como «programados». Ahora se aceptan y la matrícula se muestra como `103004 + 103005`. Además, un tren programado cuya hora de salida ya ha pasado y que no aparece en directo dice «Sin datos en directo» en vez de «Aún no ha salido», porque no se puede saber si salió.
+
 ## 1.7.3 — 29 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Corrección: tras publicar una versión, el navegador podía cargar la página nueva con el `app.js` o el `style.css` anteriores durante unos 10 minutos (lo que tardan en caducar en GitHub Pages), y se veían pantallas a medio actualizar. Ahora los dos archivos llevan el número de versión en la dirección (`app.js?v=1.7.3`), así que cada página carga siempre los suyos. La comprobación automática de GitHub falla si la versión no coincide en `index.html` y `sw.js`.

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'infotren-1.7.3';
+const CACHE_NAME = 'infotren-1.7.4';
 const VERSION = CACHE_NAME.replace('infotren-', '');
 const ASSETS = [
     './',
