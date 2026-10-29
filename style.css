@@ -1542,6 +1542,7 @@ body {
     .fleet-table td:nth-child(4) { grid-area: orig; display: inline; justify-self: end; text-align: right; }
     .fleet-table td:nth-child(5) { grid-area: next; font-weight: 600; color: var(--text-muted); }
     .fleet-table td:nth-child(5)::before { content: 'Próxima: '; font-weight: 700; }
+    .fleet-table tr.scheduled-row td:nth-child(5)::before { content: none; }
     .fleet-table td:nth-child(7) { display: none; }
 
     /* The button stays for keyboard and screen-reader users; the card itself is the tap target. */
@@ -1618,6 +1619,7 @@ body {
 .table-delay.ontime { color: var(--status-green); }
 .table-delay.slight { color: var(--status-amber); }
 .table-delay.heavy { color: var(--status-red); }
+.table-delay.scheduled { color: var(--text-muted); }
 
 /* ==========================================================================
    PIE DE PÁGINA (FOOTER) CON AUTORÍA OFICIAL MOSQUETEROWEB

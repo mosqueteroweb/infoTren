@@ -1,4 +1,4 @@
-const CACHE_NAME = 'infotren-1.6.3';
+const CACHE_NAME = 'infotren-1.7.0';
 const ASSETS = [
     './',
     './index.html',
@@ -15,6 +15,7 @@ const ASSETS = [
     './data/stations.json',
     './data/flotaLD.json',
     './data/trenesConEstacionesLD.json',
+    './data/programados.json',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];

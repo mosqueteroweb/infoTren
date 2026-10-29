@@ -33,5 +33,5 @@ localStorage.setItem('infotren_custom_proxy', 'https://otro-worker.tu-usuario.wo
 ```
 
 El worker incluye además:
-- **Validación de seguridad**: solo sirve `flotaLD.json` y `trenesConEstacionesLD.json` de Renfe; cualquier otra dirección recibe un 403.
+- **Validación de seguridad**: solo sirve `flotaLD.json`, `trenesConEstacionesLD.json` y `trip_updates_LD.json` (cancelaciones) de Renfe; cualquier otra dirección recibe un 403.
 - **Caché Edge de 30 segundos**: Acelera drásticamente las respuestas y evita sobrecargar los servidores de Renfe.

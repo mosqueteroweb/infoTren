@@ -159,7 +159,7 @@
                             <span class="delay-text" id="detailDelayText">EN HORA · Sin retraso</span>
                         </div>
                         <div class="next-station-row">
-                            <span class="next-station-tag">PRÓXIMA PARADA:</span>
+                            <span class="next-station-tag" id="detailNextStationTag">PRÓXIMA PARADA:</span>
                             <strong class="next-station-name" id="detailNextStationShort">Zaragoza Del.</strong>
                             <span class="next-station-eta" id="detailNextEta">Llegada prevista: 11:40</span>
                         </div>
@@ -275,8 +275,8 @@
                     <p><strong>💡 Consejos de ayuda:</strong></p>
                     <ul>
                         <li>Escribe solo los números del tren sin letras: por ejemplo <code>3093</code> en lugar de <code>AVE 3093</code>.</li>
-                        <li>Se muestran trenes AVE, Avlo, Alvia, Euromed, Intercity y Media Distancia que están circulando hoy.</li>
-                        <li>Si el tren aún no ha salido o ya terminó su viaje hace horas, no aparecerá activo todavía.</li>
+                        <li>Se muestran trenes AVE, Avlo, Alvia, Avant, Euromed, Intercity, Media Distancia y Regionales: los que circulan ahora y los que salen en las próximas 24 horas.</li>
+                        <li>Si el tren ya terminó su viaje, o sale dentro de más de 24 horas, no aparecerá.</li>
                     </ul>
                 </div>
             </div>
@@ -310,6 +310,7 @@
                     <button type="button" class="filter-pill" data-filter="Alvia" data-action="setFleetFilter" data-arg="Alvia">Alvia: <span id="countAlvia">0</span></button>
                     <button type="button" class="filter-pill" data-filter="MD" data-action="setFleetFilter" data-arg="MD">Media Distancia: <span id="countMd">0</span></button>
                     <button type="button" class="filter-pill" data-filter="delay" data-action="setFleetFilter" data-arg="delay">Con Retraso: <span id="countDelay">0</span></button>
+                    <button type="button" class="filter-pill" data-filter="upcoming" data-action="setFleetFilter" data-arg="upcoming">🕒 Próximas salidas: <span id="countUpcoming">0</span></button>
                 </div>
             </div>
 
@@ -396,11 +397,14 @@
                         Desarrollado por <a href="https://github.com/mosqueteroweb" target="_blank" rel="noopener"><strong>Pedro Mosqueteroweb</strong></a> · Código Abierto (<a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GPL-3.0</a>)
                     </p>
                     <p class="footer-links">
+                        Datos: <a href="https://data.renfe.com/" target="_blank" rel="noopener">Renfe, data.renfe.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/deed.es" target="_blank" rel="noopener">CC BY 4.0</a>)
+                    </p>
+                    <p class="footer-links">
                         <a href="mailto:mosqueteroweb@gmail.com">mosqueteroweb@gmail.com</a>
                         <span class="footer-sep">·</span>
                         <a href="https://github.com/mosqueteroweb" target="_blank" rel="noopener">GitHub @mosqueteroweb</a>
                         <span class="footer-sep">·</span>
-                        <a href="https://github.com/mosqueteroweb/infoTren/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Versión 1.6.3</a>
+                        <a href="https://github.com/mosqueteroweb/infoTren/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Versión 1.7.0</a>
                     </p>
                 </div>
             </div>

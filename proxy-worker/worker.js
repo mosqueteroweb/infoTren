@@ -21,11 +21,12 @@ export default {
 
         const url = new URL(request.url);
         
-        // Only the two public Renfe files can be fetched. The old check (hostname ends with "renfe.com")
+        // Only these public Renfe files can be fetched (live fleet, routes, and GTFS-RT updates with cancellations). The old check (hostname ends with "renfe.com")
         // also let through "evilrenfe.com" and any other Renfe address, turning the worker into an open proxy.
         const ALLOWED = {
             flota: "https://tiempo-real.largorecorrido.renfe.com/renfe-visor/flotaLD.json",
             rutas: "https://tiempo-real.largorecorrido.renfe.com/renfe-visor/trenesConEstacionesLD.json",
+            avisos: "https://gtfsrt.renfe.com/trip_updates_LD.json",
         };
         const requested = url.searchParams.get("url");
         let targetUrl = null;
@@ -37,9 +38,11 @@ export default {
             targetUrl = ALLOWED.flota;
         } else if (url.pathname.includes("rutas") || url.pathname.includes("trenes")) {
             targetUrl = ALLOWED.rutas;
+        } else if (url.pathname.includes("avisos")) {
+            targetUrl = ALLOWED.avisos;
         }
         if (!targetUrl) {
-            return new Response(JSON.stringify({ error: "Solo se permiten flotaLD.json y trenesConEstacionesLD.json de Renfe." }), {
+            return new Response(JSON.stringify({ error: "Solo se permiten flotaLD.json, trenesConEstacionesLD.json y trip_updates_LD.json de Renfe." }), {
                 status: 403,
                 headers: { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" }
             });

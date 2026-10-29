@@ -33,7 +33,15 @@ const CONFIG = {
     ROUTES_URL: 'https://tiempo-real.largorecorrido.renfe.com/renfe-visor/trenesConEstacionesLD.json',
     LOCAL_FLEET_URL: './data/flotaLD.json',
     LOCAL_ROUTES_URL: './data/trenesConEstacionesLD.json',
-    STATIONS_URL: './data/stations.json'
+    STATIONS_URL: './data/stations.json',
+    // Renfe's open timetable, trimmed to the next hours by scripts/build_programados.py.
+    SCHEDULE_URL: './data/programados.json',
+    // Open GTFS-RT feed: the only source that announces cancellations before a train leaves.
+    TRIP_UPDATES_URL: 'https://gtfsrt.renfe.com/trip_updates_LD.json',
+    SCHEDULE_REFRESH: 30 * 60 * 1000,
+    CANCELLATIONS_REFRESH: 5 * 60 * 1000,
+    UPCOMING_HOURS: 24,
+    UPCOMING_MAX_ROWS: 200
 };
 
 const PRODUCTS = {
@@ -59,7 +67,10 @@ const PRODUCTS = {
     20: { name: 'Alaris', badge: 'alaris', color: '#b25e14' },
     25: { name: 'AVE TGV', badge: 'ave', color: '#b91c1c' },
     28: { name: 'AVLO', badge: 'avlo', color: '#8e44ad' },
-    29: { name: 'Trenhotel', badge: 'trenhotel', color: '#0b8177' }
+    29: { name: 'Trenhotel', badge: 'trenhotel', color: '#0b8177' },
+    30: { name: 'Proximidad', badge: 'regional', color: '#12843c' },
+    31: { name: 'Trencelta', badge: 'regional', color: '#12843c' },
+    32: { name: 'Avant Exprés', badge: 'avant', color: '#027ab8' }
 };
 
 // Sin paréntesis para evitar saltos de línea rotos en móvil
@@ -99,6 +110,10 @@ const state = {
     },
     activeTab: 'search',
     fleetFilter: 'all',
+    schedule: [],
+    scheduleLoadedAt: 0,
+    cancelledTrips: new Set(),
+    cancellationsLoadedAt: 0,
     fleetSearchQuery: '',
     pollTimer: null,
     lastUpdated: null,
@@ -158,6 +173,29 @@ function validateRoutes(data) {
         .map((r) => ({ ...r, estaciones: r.estaciones.filter((s) => s && isShortText(String(s.p), 12) && isTimeText(s.h) && isTimeText(s.hs)).slice(0, 200) }))
         .slice(0, 2000);
     return { ...data, trenes };
+}
+
+const isClockTime = (v) => typeof v === 'string' && /^(\d{2}:\d{2})?$/.test(v);
+const isIsoTime = (v) => typeof v === 'string' && v.length <= 30 && !Number.isNaN(Date.parse(v));
+
+function validateSchedule(data) {
+    if (!data || !Array.isArray(data.trenes)) return null;
+    const trenes = data.trenes.filter((t) => t && isShortText(t.n, 10) && isShortText(t.id, 40) &&
+        Number.isInteger(t.p) && isIsoTime(t.s) && isIsoTime(t.l) && Array.isArray(t.e) && t.e.length >= 2 &&
+        t.e.every((s) => Array.isArray(s) && isShortText(String(s[0]), 12) && isClockTime(s[1]) && isClockTime(s[2])))
+        .slice(0, 6000)
+        .map((t) => ({ ...t, departure: new Date(t.s), arrival: new Date(t.l), e: t.e.slice(0, 200) }));
+    return { ...data, trenes };
+}
+
+// GTFS-RT trip_updates: keep only the ids Renfe marks as cancelled.
+function validateTripUpdates(data) {
+    if (!data || !Array.isArray(data.entity)) return null;
+    const cancelled = data.entity
+        .map((e) => e?.tripUpdate?.trip)
+        .filter((trip) => trip && trip.scheduleRelationship === 'CANCELED' && isShortText(trip.tripId, 40))
+        .map((trip) => trip.tripId);
+    return { cancelled: cancelled.slice(0, 5000) };
 }
 
 function sanitizeInput(str) {
@@ -531,6 +569,33 @@ async function loadStations() {
     }
 }
 
+// The timetable changes once a day and the file is local: reload it every half hour, not every poll.
+async function loadSchedule() {
+    if (Date.now() - state.scheduleLoadedAt < CONFIG.SCHEDULE_REFRESH) return;
+    try {
+        const res = await fetch(CONFIG.SCHEDULE_URL);
+        const data = res.ok && validateSchedule(await res.json());
+        if (data) {
+            state.schedule = data.trenes;
+            state.scheduleLoadedAt = Date.now();
+        }
+    } catch (e) {
+        console.warn('No se pudieron cargar los horarios programados:', e);
+    }
+}
+
+// Cancellations are only worth a live copy: a stale list could hide a train that runs, so no local fallback.
+async function loadCancellations() {
+    if (Date.now() - state.cancellationsLoadedAt < CONFIG.CANCELLATIONS_REFRESH) return;
+    try {
+        const result = await fetchWithFallback(CONFIG.TRIP_UPDATES_URL, null, null, validateTripUpdates);
+        state.cancelledTrips = new Set(result.data.cancelled);
+        state.cancellationsLoadedAt = Date.now();
+    } catch (e) {
+        state.cancellationsLoadedAt = Date.now() - CONFIG.CANCELLATIONS_REFRESH + 60000; // retry in a minute
+    }
+}
+
 async function refreshData(silent = false) {
     if (!silent) {
         updateStatusIndicator('connecting', 'Actualizando...');
@@ -539,7 +604,9 @@ async function refreshData(silent = false) {
     try {
         const [fleetResult, routesResult] = await Promise.all([
             fetchWithFallback(CONFIG.FLEET_URL, CONFIG.LOCAL_FLEET_URL, CACHE_FLEET_KEY, validateFleet),
-            fetchWithFallback(CONFIG.ROUTES_URL, CONFIG.LOCAL_ROUTES_URL, CACHE_ROUTES_KEY, validateRoutes)
+            fetchWithFallback(CONFIG.ROUTES_URL, CONFIG.LOCAL_ROUTES_URL, CACHE_ROUTES_KEY, validateRoutes),
+            loadSchedule(),
+            loadCancellations()
         ]);
 
         const fleetRes = fleetResult.data;
@@ -578,6 +645,63 @@ async function refreshData(silent = false) {
 // BÚSQUEDA Y SELECCIÓN DE TREN
 // ============================================================================
 
+// ============================================================================
+// TRENES PROGRAMADOS (AÚN NO CIRCULAN)
+// ============================================================================
+
+const madridDay = (date) => date.toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+
+function formatDeparture(date) {
+    const time = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' });
+    const day = madridDay(date);
+    if (day === madridDay(new Date())) return time;
+    if (day === madridDay(new Date(Date.now() + 86400000))) return `mañana ${time}`;
+    return `${date.toLocaleDateString('es-ES', { weekday: 'long', timeZone: 'Europe/Madrid' })} ${time}`;
+}
+
+// The feed names the cancelled trip but not the day, and one trip id covers several days of a timetable period:
+// only today's departure is marked, so a train that does run tomorrow is never shown as cancelled.
+function isCancelled(entry) {
+    return state.cancelledTrips.has(entry.id) && madridDay(entry.departure) === madridDay(new Date());
+}
+
+function scheduledToTrain(entry) {
+    const origin = entry.e[0][0];
+    return {
+        codComercial: entry.n,
+        codProduct: entry.p,
+        codOrigen: origin,
+        codDestino: entry.e[entry.e.length - 1][0],
+        codEstSig: origin,
+        ultRetraso: '0',
+        synthetic: true,
+        scheduled: entry,
+        cancelled: isCancelled(entry)
+    };
+}
+
+function scheduledRoute(entry) {
+    return { idTren: entry.n, estaciones: entry.e.map(([p, h, hs]) => ({ p, h, hs })) };
+}
+
+// Earliest trip with that number that has not arrived yet (the file is sorted by departure).
+function findScheduled(normQ) {
+    const now = Date.now();
+    return state.schedule.find(t => normalizeTrainId(t.n) === normQ && t.arrival.getTime() >= now) || null;
+}
+
+// Departures of the next hours that are not running yet; a quarter of an hour back keeps the ones about to start.
+function upcomingDepartures() {
+    const now = Date.now();
+    const from = now - 15 * 60000;
+    const to = now + CONFIG.UPCOMING_HOURS * 3600000;
+    const running = new Set(state.fleet.map(t => normalizeTrainId(t.codComercial)));
+    return state.schedule.filter(t => {
+        const dep = t.departure.getTime();
+        return dep >= from && dep <= to && !running.has(normalizeTrainId(t.n));
+    });
+}
+
 function findTrain(query) {
     if (!query) return null;
     const cleanQ = String(query).trim();
@@ -591,7 +715,11 @@ function findTrain(query) {
 
     if (match) return match;
 
-    // 2. Si no está en flota activa, buscar en las rutas programadas del día
+    // 2. Si aún no circula, su próxima salida según el horario de Renfe
+    const scheduled = findScheduled(normQ);
+    if (scheduled) return scheduledToTrain(scheduled);
+
+    // 3. Si no está en el horario, buscar en las rutas programadas del día
     const routeMatch = state.routes.find(r => 
         String(r.idTren).trim() === cleanQ || 
         normalizeTrainId(r.idTren) === normQ
@@ -726,9 +854,9 @@ function displayTrain(train, resetMapView = true) {
     if (numEl) numEl.textContent = `Tren #${train.codComercial}`;
     const servEl = document.getElementById('detailServiceName');
     if (servEl) {
-        servEl.textContent = train.synthetic
-            ? `${prod.name} · Horario programado`
-            : `${prod.name} · En circulación`;
+        if (train.cancelled) servEl.textContent = `${prod.name} · Cancelado`;
+        else if (train.scheduled) servEl.textContent = `${prod.name} · Aún no ha salido`;
+        else servEl.textContent = train.synthetic ? `${prod.name} · Horario programado` : `${prod.name} · En circulación`;
     }
 
     // 2. RETRASO Y ESTADO (PRIMERO EN LA TARJETA)
@@ -740,7 +868,18 @@ function displayTrain(train, resetMapView = true) {
     let icon = '🟢';
     let text = 'EN HORA · Sin retraso';
 
-    if (train.synthetic) {
+    if (train.cancelled) {
+        delayClass = 'delay-heavy';
+        icon = '❌';
+        text = 'CANCELADO · Según Renfe';
+    } else if (train.scheduled) {
+        delayClass = 'delay-ontime';
+        icon = '🕒';
+        // Renfe publishes no delay before departure: once it leaves, the live data takes over.
+        text = train.scheduled.departure.getTime() > Date.now()
+            ? `PROGRAMADO · Sale ${formatDeparture(train.scheduled.departure)}`
+            : `PROGRAMADO · Debía salir a las ${formatDeparture(train.scheduled.departure)} · Aún sin datos en directo`;
+    } else if (train.synthetic) {
         delayClass = 'delay-ontime';
         icon = '🕒';
         text = 'PROGRAMADO · Sin retraso registrado';
@@ -778,9 +917,14 @@ function displayTrain(train, resetMapView = true) {
     const nextStEl = document.getElementById('detailNextStationShort');
     if (nextStEl) nextStEl.textContent = nextStationShort;
 
+    const nextTagEl = document.getElementById('detailNextStationTag');
+    if (nextTagEl) nextTagEl.textContent = train.scheduled ? 'SALE DE:' : 'PRÓXIMA PARADA:';
+
     const nextEtaEl = document.getElementById('detailNextEta');
     if (nextEtaEl) {
-        if (train.horaLlegadaSigEst) {
+        if (train.scheduled) {
+            nextEtaEl.textContent = `Salida programada: ${formatDeparture(train.scheduled.departure)}`;
+        } else if (train.horaLlegadaSigEst) {
             try {
                 const timePart = train.horaLlegadaSigEst.split('T')[1]?.substring(0, 5) || train.horaLlegadaSigEst;
                 nextEtaEl.textContent = `Llegada estimada: ${timePart}`;
@@ -801,7 +945,9 @@ function displayTrain(train, resetMapView = true) {
     if (destEl) destEl.textContent = destShort;
 
     // Buscar ruta para horarios de origen y destino
-    const route = state.routes.find(r => normalizeTrainId(r.idTren) === normalizeTrainId(train.codComercial));
+    const route = train.scheduled
+        ? scheduledRoute(train.scheduled)
+        : state.routes.find(r => normalizeTrainId(r.idTren) === normalizeTrainId(train.codComercial));
     const depEl = document.getElementById('detailDepTime');
     const arrEl = document.getElementById('detailArrTime');
 
@@ -825,7 +971,10 @@ function displayTrain(train, resetMapView = true) {
     const accEl = document.getElementById('detailAccessible');
     if (accEl) accEl.textContent = train.accesible ? '♿ Servicio Atendo · PMR Habilitado' : 'Accesibilidad estándar';
     const lastStEl = document.getElementById('detailLastStation');
-    if (lastStEl) lastStEl.textContent = train.codEstAnt ? formatStationMax15(train.codEstAnt) : 'Inicio de recorrido';
+    if (lastStEl) {
+        if (train.scheduled) lastStEl.textContent = 'Aún no ha salido';
+        else lastStEl.textContent = train.codEstAnt ? formatStationMax15(train.codEstAnt) : 'Inicio de recorrido';
+    }
 
     // 5. Renderizar Timeline de Estaciones (SEGUNDO DESPLEGABLE)
     renderTimeline(train, route);
@@ -897,6 +1046,9 @@ function renderTimeline(train, route) {
         if (index < nextIndex) {
             statusClass = 'completed';
             statusText = '✓ Parada superada';
+        } else if (index === nextIndex && train.scheduled) {
+            statusClass = 'current';
+            statusText = train.cancelled ? '❌ Cancelado' : '🕒 Salida programada';
         } else if (index === nextIndex) {
             statusClass = 'current';
             // Same estimate as the "Próxima parada" card: Renfe's own arrival time, not schedule + delay.
@@ -1305,11 +1457,6 @@ function updateFleetTable() {
     const tbody = document.getElementById('fleetTableBody');
     if (!tbody) return;
 
-    if (!state.fleet || state.fleet.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="table-loading">No hay trenes registrados en circulación en este momento.</td></tr>';
-        return;
-    }
-
     let aveCount = 0, avloCount = 0, alviaCount = 0, mdCount = 0, delayCount = 0;
     state.fleet.forEach(t => {
         const p = t.codProduct;
@@ -1330,6 +1477,22 @@ function updateFleetTable() {
     setElText('countAlvia', alviaCount);
     setElText('countMd', mdCount);
     setElText('countDelay', delayCount);
+
+    const upcoming = upcomingDepartures();
+    setElText('countUpcoming', upcoming.length);
+    const showUpcoming = state.fleetFilter === 'upcoming';
+    const nextHeader = document.querySelector('#fleetTable thead th:nth-child(5)');
+    if (nextHeader) nextHeader.textContent = showUpcoming ? 'Salida' : 'Próxima Parada';
+    if (showUpcoming) {
+        renderUpcomingRows(tbody, upcoming);
+        return;
+    }
+
+    // At night almost nothing runs, but the scheduled departures are still one chip away.
+    if (!state.fleet || state.fleet.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="table-loading">No hay trenes en circulación en este momento. Pulsa «Próximas salidas» para ver los que salen en las próximas horas.</td></tr>';
+        return;
+    }
 
     const filtered = state.fleet.filter(t => {
         if (state.fleetFilter === 'AVE' && t.codProduct !== 2 && t.codProduct !== 25) return false;
@@ -1372,16 +1535,57 @@ function updateFleetTable() {
             <td><button class="btn-sm" type="button" aria-label="Ver ficha del tren #${escapeHTML(t.codComercial)}">Ver Tren</button></td>
         `;
 
-        tr.onclick = () => {
-            switchTab('search');
-            const input = document.getElementById('trainInput');
-            if (input) input.value = t.codComercial;
-            searchTrain(t.codComercial);
-            window.scrollTo({ top: 0, behavior: scrollBehavior() });
-        };
+        tr.onclick = () => openTrainFromList(t.codComercial);
 
         tbody.appendChild(tr);
     });
+}
+
+function openTrainFromList(trainNumber) {
+    switchTab('search');
+    const input = document.getElementById('trainInput');
+    if (input) input.value = trainNumber;
+    searchTrain(trainNumber);
+    window.scrollTo({ top: 0, behavior: scrollBehavior() });
+}
+
+function renderUpcomingRows(tbody, upcoming) {
+    const trains = upcoming.map(scheduledToTrain)
+        .filter(t => !state.fleetSearchQuery || trainMatchesQuery(t, state.fleetSearchQuery));
+
+    if (trains.length === 0) {
+        const reason = state.schedule.length === 0
+            ? 'Todavía no se han podido cargar los horarios programados.'
+            : 'No hay salidas programadas que coincidan en las próximas 24 horas.';
+        tbody.innerHTML = `<tr><td colspan="8" class="table-loading">${reason}</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = '';
+    trains.slice(0, CONFIG.UPCOMING_MAX_ROWS).forEach(t => {
+        const prod = getProductInfo(t.codProduct);
+        const status = t.cancelled ? { text: 'Cancelado', class: 'heavy' } : { text: 'Programado', class: 'scheduled' };
+        const tr = document.createElement('tr');
+        tr.className = 'scheduled-row';
+        tr.innerHTML = `
+            <td><span class="table-train-tag">#${escapeHTML(t.codComercial)}</span></td>
+            <td><span class="table-badge" style="background-color: ${escapeHTML(prod.color)}">${escapeHTML(prod.name)}</span></td>
+            <td><strong>${escapeHTML(formatStationMax15(t.codOrigen))}</strong><span class="route-inline"> → <strong>${escapeHTML(formatStationMax15(t.codDestino))}</strong></span></td>
+            <td><strong>${escapeHTML(formatStationMax15(t.codDestino))}</strong></td>
+            <td>${t.scheduled.departure.getTime() > Date.now() ? 'Sale' : 'Debía salir'} ${escapeHTML(formatDeparture(t.scheduled.departure))}</td>
+            <td><span class="table-delay ${status.class}">${escapeHTML(status.text)}</span></td>
+            <td><small>--</small></td>
+            <td><button class="btn-sm" type="button" aria-label="Ver ficha del tren #${escapeHTML(t.codComercial)}">Ver Tren</button></td>
+        `;
+        tr.onclick = () => openTrainFromList(t.codComercial);
+        tbody.appendChild(tr);
+    });
+
+    if (trains.length > CONFIG.UPCOMING_MAX_ROWS) {
+        const note = document.createElement('tr');
+        note.innerHTML = `<td colspan="8" class="table-loading">Se muestran las ${CONFIG.UPCOMING_MAX_ROWS} primeras de ${trains.length} salidas. Escribe una estación o un número arriba para encontrar el resto.</td>`;
+        tbody.appendChild(note);
+    }
 }
 
 // ============================================================================

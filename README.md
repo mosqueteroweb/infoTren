@@ -19,7 +19,7 @@ Aplicación web (PWA) para seguir los trenes de Larga y Media Distancia de Renfe
 
 Es una web estática alojada en GitHub Pages. Los datos salen del visor público de Renfe (`tiempo-real.largorecorrido.renfe.com`). Como Renfe no permite llamadas directas desde el navegador, la app los pide a través de un proxy CORS. Usa primero el proxy propio de Cloudflare Workers ([`proxy-worker/`](proxy-worker/)), desplegado en `infotren-cors-proxy.mosqueteroweb.workers.dev`, y solo si falla recurre a proxies públicos.
 
-El flujo `update-trains.yml` guarda cada 2 horas una copia de respaldo en `data/`, que la app usa si no puede leer los datos en directo.
+El flujo `update-trains.yml` guarda cada 2 horas una copia de respaldo en `data/`, que la app usa si no puede leer los datos en directo. En la misma pasada, [`scripts/build_programados.py`](scripts/build_programados.py) descarga los horarios abiertos de Renfe (GTFS de [data.renfe.com](https://data.renfe.com/), CC BY 4.0) y genera `data/programados.json` con los trenes que salen en las próximas horas. Las cancelaciones llegan en directo de `trip_updates_LD.json` (GTFS-RT) a través del mismo proxy. Renfe no publica retrasos antes de la salida: un tren programado aparece sin retraso hasta que empieza a circular.
 
 ## Desarrollo
 

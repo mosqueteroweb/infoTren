@@ -50,6 +50,9 @@ jobs:
                   print(f"Se conserva la copia anterior de {dest}: {e}")
           '
 
+      - name: Generar horarios programados de las próximas horas
+        run: python scripts/build_programados.py data/programados.json
+
       - name: Guardar cambios si hay diferencias
         run: |
           git config --local user.email "action@github.com"
