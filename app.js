@@ -100,6 +100,7 @@ const ROLLING_STOCK = {
 const state = {
     fleet: [],
     routes: [],
+    routesById: new Map(),
     stations: {},
     currentTrain: null,
     map: null,
@@ -615,6 +616,7 @@ async function refreshData(silent = false) {
         // Trains without a GPS fix still have delay and next stop: keep them searchable (they just get no map marker).
         state.fleet = [...(fleetRes?.trenes || []), ...(fleetRes?.trenesNoPosicionados || [])];
         state.routes = routesRes?.trenes || (Array.isArray(routesRes) ? routesRes : []);
+        state.routesById = new Map(state.routes.map(r => [normalizeTrainId(r.idTren), r]));
         state.lastUpdated = new Date();
 
         if (fleetResult.source === 'live') {
@@ -751,7 +753,10 @@ function searchTrain(query) {
         switchTab('search');
     }
 
-    const found = findTrain(clean);
+    // "AVE 3093" is still a train number; only text without a known train becomes a station search.
+    const digits = clean.replace(/\D/g, '');
+    const found = findTrain(clean) || (digits && /[a-zA-Z]/.test(clean) ? findTrain(digits) : null);
+    if (!found && /[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/.test(clean) && openStationSearch(clean)) return;
 
     const detailContainer = document.getElementById('trainDetailContainer');
     const emptyPrompt = document.getElementById('emptySearchPrompt');
@@ -776,10 +781,14 @@ function searchTrain(query) {
         emptyPrompt.style.display = 'none';
         detailContainer.style.display = 'none';
         notFoundState.style.display = 'block';
-        document.getElementById('notFoundTitle').textContent = `Tren #${clean} no encontrado`;
-        document.getElementById('notFoundMsg').textContent = 
-            `Actualmente no hay datos activos para el tren número ${clean}. Revisa el número de tu billete o consulta la lista de trenes en circulación.`;
-        showSearchError(`Tren #${clean} no encontrado. Revisa el número o mira los consejos más abajo.`);
+        const isNumber = /^\d+$/.test(clean);
+        document.getElementById('notFoundTitle').textContent = isNumber ? `Tren #${clean} no encontrado` : `Ningún tren pasa por «${clean}»`;
+        document.getElementById('notFoundMsg').textContent = isNumber
+            ? `No hay datos para el tren número ${clean} ahora ni en las próximas 24 horas. Revisa el número de tu billete o consulta la lista de trenes en circulación.`
+            : `No hay trenes en circulación ni salidas en las próximas 24 horas que paren en «${clean}». Revisa cómo está escrito o prueba con el número del tren.`;
+        showSearchError(isNumber
+            ? `Tren #${clean} no encontrado. Revisa el número o mira los consejos más abajo.`
+            : `Ningún tren pasa por «${clean}». Revisa cómo está escrito.`);
     }
 }
 
@@ -809,6 +818,24 @@ function hideSearchError() {
         input.removeAttribute('aria-invalid');
         input.removeAttribute('aria-describedby');
     }
+}
+
+// A place name typed in the main box opens the list filtered by it: running trains first, else the next departures.
+function openStationSearch(text) {
+    const query = normalizeForSearch(text);
+    const runs = state.fleet.some(t => trainMatchesQuery(t, query));
+    const departs = upcomingDepartures().some(t => trainMatchesQuery(scheduledToTrain(t), query));
+    if (!runs && !departs) return false;
+
+    hideSearchError();
+    document.getElementById('notFoundState').style.display = 'none';
+    const input = document.getElementById('fleetFilterInput');
+    if (input) input.value = text;
+    state.fleetSearchQuery = query;
+    switchTab('fleet');
+    setFleetFilter(runs ? 'all' : 'upcoming');
+    document.getElementById('fleetProductFilters')?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
+    return true;
 }
 
 function showSearchForm() {
@@ -1352,13 +1379,30 @@ function normalizeForSearch(text) {
         .trim();
 }
 
+// Filtering 1,500 scheduled trains by their stops on every keystroke: normalise each station name once.
+const stationSearchNames = new Map();
+function stationSearchName(code) {
+    if (!stationSearchNames.has(code)) stationSearchNames.set(code, normalizeForSearch(getStationName(code)));
+    return stationSearchNames.get(code);
+}
+
+// Every stop of the train, so "Tarragona" also finds the Madrid–Barcelona trains that only call there.
+function trainStopCodes(train) {
+    if (train.scheduled) return train.scheduled.e.map(s => s[0]);
+    const route = state.routesById.get(normalizeTrainId(train.codComercial));
+    return route ? route.estaciones.map(s => s.p) : [train.codOrigen, train.codDestino];
+}
+
+// Index of the first stop whose name matches, or -1.
+function matchingStopIndex(train, query) {
+    return trainStopCodes(train).findIndex(code => stationSearchName(code).includes(query));
+}
+
 function trainMatchesQuery(train, query) {
-    return [
-        train.codComercial,
-        getStationName(train.codOrigen),
-        getStationName(train.codDestino),
-        getProductInfo(train.codProduct).name
-    ].some(field => normalizeForSearch(field).includes(query));
+    const fields = [train.codComercial, getProductInfo(train.codProduct).name];
+    return fields.some(field => normalizeForSearch(field).includes(query)) ||
+        [train.codOrigen, train.codDestino].some(code => stationSearchName(code).includes(query)) ||
+        matchingStopIndex(train, query) !== -1;
 }
 
 function handleInputSearch(e) {
@@ -1376,7 +1420,16 @@ function handleInputSearch(e) {
         return;
     }
 
-    const matches = state.fleet.filter(t => trainMatchesQuery(t, query)).slice(0, 8);
+    const live = state.fleet.filter(t => trainMatchesQuery(t, query));
+    const scheduled = live.length >= 8 ? [] : upcomingDepartures().map(scheduledToTrain).filter(t => trainMatchesQuery(t, query));
+    // One option per train number: the option id is built from it, and the search opens the next trip anyway.
+    const seen = new Set();
+    const matches = [...live, ...scheduled].filter(t => {
+        const id = normalizeTrainId(t.codComercial);
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+    }).slice(0, 8);
 
     if (matches.length === 0) {
         dropdown.style.display = 'none';
@@ -1396,7 +1449,7 @@ function handleInputSearch(e) {
                 <span class="table-badge" style="background-color: ${escapeHTML(prod.color)}">${escapeHTML(prod.name)}</span>
                 <span class="item-train-num">#${escapeHTML(t.codComercial)}</span>
             </div>
-            <div class="item-route">${escapeHTML(formatStationMax15(t.codOrigen))} ➔ ${escapeHTML(formatStationMax15(t.codDestino))}</div>
+            <div class="item-route">${escapeHTML(formatStationMax15(t.codOrigen))} ➔ ${escapeHTML(formatStationMax15(t.codDestino))}${t.scheduled ? ` · ${t.cancelled ? 'Cancelado' : `Sale ${escapeHTML(formatDeparture(t.scheduled.departure))}`}` : ''}</div>
         `;
         item.onclick = () => {
             document.getElementById('trainInput').value = t.codComercial;
@@ -1549,6 +1602,17 @@ function openTrainFromList(trainNumber) {
     window.scrollTo({ top: 0, behavior: scrollBehavior() });
 }
 
+// When the list is filtered by a station the train only calls at, its time there matters more than at the origin.
+function upcomingTimeText(train) {
+    const stopIndex = state.fleetSearchQuery ? matchingStopIndex(train, state.fleetSearchQuery) : -1;
+    if (stopIndex > 0) {
+        const [code, arrival, departure] = train.scheduled.e[stopIndex];
+        return `En ${formatStationMax15(code)} ${departure || arrival} · sale ${formatDeparture(train.scheduled.departure)}`;
+    }
+    const verb = train.scheduled.departure.getTime() > Date.now() ? 'Sale' : 'Debía salir';
+    return `${verb} ${formatDeparture(train.scheduled.departure)}`;
+}
+
 function renderUpcomingRows(tbody, upcoming) {
     const trains = upcoming.map(scheduledToTrain)
         .filter(t => !state.fleetSearchQuery || trainMatchesQuery(t, state.fleetSearchQuery));
@@ -1572,7 +1636,7 @@ function renderUpcomingRows(tbody, upcoming) {
             <td><span class="table-badge" style="background-color: ${escapeHTML(prod.color)}">${escapeHTML(prod.name)}</span></td>
             <td><strong>${escapeHTML(formatStationMax15(t.codOrigen))}</strong><span class="route-inline"> → <strong>${escapeHTML(formatStationMax15(t.codDestino))}</strong></span></td>
             <td><strong>${escapeHTML(formatStationMax15(t.codDestino))}</strong></td>
-            <td>${t.scheduled.departure.getTime() > Date.now() ? 'Sale' : 'Debía salir'} ${escapeHTML(formatDeparture(t.scheduled.departure))}</td>
+            <td>${escapeHTML(upcomingTimeText(t))}</td>
             <td><span class="table-delay ${status.class}">${escapeHTML(status.text)}</span></td>
             <td><small>--</small></td>
             <td><button class="btn-sm" type="button" aria-label="Ver ficha del tren #${escapeHTML(t.codComercial)}">Ver Tren</button></td>

@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.7.2 — 29 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Búsqueda por estación: los filtros miran ahora todas las paradas, no solo origen y destino, así que «Tarragona» encuentra los AVE Madrid–Barcelona que paran allí. Escribir una ciudad en el buscador principal y pulsar Consultar abre la lista filtrada por esa estación (los trenes en circulación o, si no hay, las próximas salidas) en lugar de «Tren #tarragona no encontrado». En «Próximas salidas» filtradas por una parada intermedia se ve la hora en esa estación. Las sugerencias incluyen también trenes programados.
+
 ## 1.7.1 — 29 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Corrección: en el móvil, cuando un filtro de «En circulación» no daba resultados se veía una tarjeta en blanco. El mensaje («No se encontraron trenes…», «Cargando…», «Se muestran las 200 primeras…») iba en una fila de una sola casilla, y esa casilla se ocultaba como el botón «Ver Tren», que en el móvil es invisible porque se pulsa la tarjeta entera.
