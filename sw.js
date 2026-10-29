@@ -1,4 +1,5 @@
-const CACHE_NAME = 'infotren-1.7.2';
+const CACHE_NAME = 'infotren-1.7.3';
+const VERSION = CACHE_NAME.replace('infotren-', '');
 const ASSETS = [
     './',
     './index.html',
@@ -7,11 +8,11 @@ const ASSETS = [
     './icon-192.png',
     './icon-512.png',
     './apple-touch-icon.png',
-    './style.css',
+    `./style.css?v=${VERSION}`,
     './fonts/fonts.css',
     './fonts/plus-jakarta-sans-latin.woff2',
     './fonts/jetbrains-mono-latin.woff2',
-    './app.js',
+    `./app.js?v=${VERSION}`,
     './data/stations.json',
     './data/flotaLD.json',
     './data/trenesConEstacionesLD.json',

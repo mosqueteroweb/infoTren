@@ -60,3 +60,17 @@ jobs:
           echo "Validando HTML..."
           htmlhint index.html --rules="tag-pair=true,spec-char-escape=false,id-unique=true,attr-no-duplication=true"
           echo "✅ HTML principal verificado con éxito."
+
+      - name: Comprobar que la versión coincide en todos los sitios
+        run: |
+          # index.html loads app.js?v= and style.css?v=; if they lag behind sw.js, browsers mix old and new files.
+          sw=$(grep -o "infotren-[0-9.]*'" sw.js | head -1 | sed "s/infotren-//; s/'//")
+          for found in "$(grep -o 'app.js?v=[0-9.]*' index.html | sed 's/.*=//')" \
+                       "$(grep -o 'style.css?v=[0-9.]*' index.html | sed 's/.*=//')" \
+                       "$(grep -o 'Versión [0-9.]*' index.html | sed 's/Versión //')"; do
+            if [ "$found" != "$sw" ]; then
+              echo "❌ Versión distinta: sw.js dice $sw e index.html dice $found"
+              exit 1
+            fi
+          done
+          echo "✅ Versión $sw en sw.js, index.html, app.js y style.css."

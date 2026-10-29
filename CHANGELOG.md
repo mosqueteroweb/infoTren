@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.7.3 — 29 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Corrección: tras publicar una versión, el navegador podía cargar la página nueva con el `app.js` o el `style.css` anteriores durante unos 10 minutos (lo que tardan en caducar en GitHub Pages), y se veían pantallas a medio actualizar. Ahora los dos archivos llevan el número de versión en la dirección (`app.js?v=1.7.3`), así que cada página carga siempre los suyos. La comprobación automática de GitHub falla si la versión no coincide en `index.html` y `sw.js`.
+
 ## 1.7.2 — 29 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Búsqueda por estación: los filtros miran ahora todas las paradas, no solo origen y destino, así que «Tarragona» encuentra los AVE Madrid–Barcelona que paran allí. Escribir una ciudad en el buscador principal y pulsar Consultar abre la lista filtrada por esa estación (los trenes en circulación o, si no hay, las próximas salidas) en lugar de «Tren #tarragona no encontrado». En «Próximas salidas» filtradas por una parada intermedia se ve la hora en esa estación. Las sugerencias incluyen también trenes programados.
