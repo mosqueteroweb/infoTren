@@ -18,13 +18,14 @@ const customProxy = (() => {
     } catch (e) { return null; }
 })();
 
+const OWN_PROXY = 'https://infotren-cors-proxy.mosqueteroweb.workers.dev/?url=';
+
 const CONFIG = {
+    // allorigins.win and codetabs.com were dropped in 1.8.0: they no longer answered, and every failed try cost 5.5 s.
     CORS_PROXIES: [
         ...(customProxy ? [customProxy] : []),
-        'https://infotren-cors-proxy.mosqueteroweb.workers.dev/?url=',
+        OWN_PROXY,
         'https://cors-anywhere.fly.dev/',
-        'https://api.allorigins.win/raw?url=',
-        'https://api.codetabs.com/v1/proxy?quest=',
         ''
     ],
     CURRENT_PROXY_INDEX: 0,
@@ -587,12 +588,18 @@ async function loadSchedule() {
     }
 }
 
-// Cancellations are only worth a live copy: a stale list could hide a train that runs, so no local fallback.
+// Cancellations come only through our own worker: a third-party proxy could invent them, and a made-up
+// "cancelled" may make someone miss a train that runs. No local fallback either, a stale list is just as wrong.
 async function loadCancellations() {
     if (Date.now() - state.cancellationsLoadedAt < CONFIG.CANCELLATIONS_REFRESH) return;
     try {
-        const result = await fetchWithFallback(CONFIG.TRIP_UPDATES_URL, null, null, validateTripUpdates);
-        state.cancelledTrips = new Set(result.data.cancelled);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(OWN_PROXY + encodeURIComponent(CONFIG.TRIP_UPDATES_URL), { signal: controller.signal });
+        clearTimeout(timeoutId);
+        const data = res.ok && validateTripUpdates(await res.json());
+        if (!data) throw new Error('Respuesta de cancelaciones no válida');
+        state.cancelledTrips = new Set(data.cancelled);
         state.cancellationsLoadedAt = Date.now();
     } catch (e) {
         state.cancellationsLoadedAt = Date.now() - CONFIG.CANCELLATIONS_REFRESH + 60000; // retry in a minute
@@ -671,12 +678,13 @@ function isCancelled(entry) {
 
 function scheduledToTrain(entry) {
     const origin = entry.e[0][0];
+    const hasLeft = entry.departure.getTime() <= Date.now();
     return {
         codComercial: entry.n,
         codProduct: entry.p,
         codOrigen: origin,
         codDestino: entry.e[entry.e.length - 1][0],
-        codEstSig: origin,
+        codEstSig: hasLeft ? entry.e[expectedStopIndex(entry)][0] : origin,
         ultRetraso: '0',
         synthetic: true,
         scheduled: entry,
@@ -686,6 +694,32 @@ function scheduledToTrain(entry) {
 
 // Past its departure time a scheduled train may be running untracked, late at the origin or cancelled: we cannot tell.
 const hasLeftOnSchedule = (train) => train.scheduled.departure.getTime() <= Date.now();
+
+// Date of each stop: the file only has HH:MM, so count from the departure and add a day when the clock wraps.
+function scheduledStopDates(entry) {
+    if (entry.stopDates) return entry.stopDates;
+    const toMinutes = (hhmm) => {
+        const [h, m] = String(hhmm || '').split(':').map(Number);
+        return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+    };
+    const start = toMinutes(entry.e[0][2] || entry.e[0][1]) ?? 0;
+    let previous = start;
+    let wraps = 0;
+    entry.stopDates = entry.e.map(([, arrival, departure]) => {
+        const minutes = toMinutes(arrival || departure) ?? previous;
+        if (minutes < previous) wraps += 1440;
+        previous = minutes;
+        return new Date(entry.departure.getTime() + (minutes + wraps - start) * 60000);
+    });
+    return entry.stopDates;
+}
+
+// Where an untracked train should be by now: the first stop it has not reached on schedule.
+function expectedStopIndex(entry) {
+    const now = Date.now();
+    const index = scheduledStopDates(entry).findIndex((date, i) => i > 0 && date.getTime() > now);
+    return index === -1 ? entry.e.length - 1 : index;
+}
 
 function scheduledRoute(entry) {
     return { idTren: entry.n, estaciones: entry.e.map(([p, h, hs]) => ({ p, h, hs })) };
@@ -905,14 +939,15 @@ function displayTrain(train, resetMapView = true) {
         icon = '❌';
         text = 'CANCELADO · Según Renfe';
     } else if (train.scheduled) {
-        delayClass = 'delay-ontime';
+        // Neutral, not green: "scheduled" says nothing about being on time.
+        delayClass = 'delay-unknown';
         icon = '🕒';
         // Renfe publishes no delay before departure: once it leaves, the live data takes over.
         text = train.scheduled.departure.getTime() > Date.now()
             ? `PROGRAMADO · Sale ${formatDeparture(train.scheduled.departure)}`
             : `SIN DATOS EN DIRECTO · Debía salir a las ${formatDeparture(train.scheduled.departure)}`;
     } else if (train.synthetic) {
-        delayClass = 'delay-ontime';
+        delayClass = 'delay-unknown';
         icon = '🕒';
         text = 'PROGRAMADO · Sin retraso registrado';
     } else if (delay.min === 0) {
@@ -950,11 +985,18 @@ function displayTrain(train, resetMapView = true) {
     if (nextStEl) nextStEl.textContent = nextStationShort;
 
     const nextTagEl = document.getElementById('detailNextStationTag');
-    if (nextTagEl) nextTagEl.textContent = train.scheduled ? 'SALE DE:' : 'PRÓXIMA PARADA:';
+    const leftOnSchedule = train.scheduled && hasLeftOnSchedule(train);
+    if (nextTagEl) {
+        if (leftOnSchedule) nextTagEl.textContent = 'SEGÚN EL HORARIO, LLEGARÍA A:';
+        else nextTagEl.textContent = train.scheduled ? 'SALE DE:' : 'PRÓXIMA PARADA:';
+    }
 
     const nextEtaEl = document.getElementById('detailNextEta');
     if (nextEtaEl) {
-        if (train.scheduled) {
+        if (leftOnSchedule) {
+            const stopDate = scheduledStopDates(train.scheduled)[expectedStopIndex(train.scheduled)];
+            nextEtaEl.textContent = `Llegada programada: ${formatDeparture(stopDate)} · Sin confirmar en directo`;
+        } else if (train.scheduled) {
             nextEtaEl.textContent = `Salida programada: ${formatDeparture(train.scheduled.departure)}`;
         } else if (train.horaLlegadaSigEst) {
             try {
@@ -1004,7 +1046,12 @@ function displayTrain(train, resetMapView = true) {
     if (accEl) accEl.textContent = train.accesible ? '♿ Servicio Atendo · PMR Habilitado' : 'Accesibilidad estándar';
     const lastStEl = document.getElementById('detailLastStation');
     if (lastStEl) {
-        if (train.scheduled) lastStEl.textContent = hasLeftOnSchedule(train) ? 'Sin datos en directo' : 'Aún no ha salido';
+        if (train.scheduled) {
+            const previous = expectedStopIndex(train.scheduled) - 1;
+            lastStEl.textContent = hasLeftOnSchedule(train)
+                ? `Según el horario: ${formatStationMax15(train.scheduled.e[Math.max(0, previous)][0])}`
+                : 'Aún no ha salido';
+        }
         else lastStEl.textContent = train.codEstAnt ? formatStationMax15(train.codEstAnt) : 'Inicio de recorrido';
     }
 
@@ -1077,10 +1124,11 @@ function renderTimeline(train, route) {
 
         if (index < nextIndex) {
             statusClass = 'completed';
-            statusText = '✓ Parada superada';
+            statusText = train.scheduled ? '✓ Superada según el horario' : '✓ Parada superada';
         } else if (index === nextIndex && train.scheduled) {
             statusClass = 'current';
-            statusText = train.cancelled ? '❌ Cancelado' : '🕒 Salida programada';
+            if (train.cancelled) statusText = '❌ Cancelado';
+            else statusText = hasLeftOnSchedule(train) ? '🕒 Próxima según el horario' : '🕒 Salida programada';
         } else if (index === nextIndex) {
             statusClass = 'current';
             // Same estimate as the "Próxima parada" card: Renfe's own arrival time, not schedule + delay.
@@ -1611,16 +1659,28 @@ function openTrainFromList(trainNumber) {
 function upcomingTimeText(train) {
     const stopIndex = state.fleetSearchQuery ? matchingStopIndex(train, state.fleetSearchQuery) : -1;
     if (stopIndex > 0) {
-        const [code, arrival, departure] = train.scheduled.e[stopIndex];
-        return `En ${formatStationMax15(code)} ${departure || arrival} · sale ${formatDeparture(train.scheduled.departure)}`;
+        const code = train.scheduled.e[stopIndex][0];
+        const when = formatDeparture(scheduledStopDates(train.scheduled)[stopIndex]);
+        return `En ${formatStationMax15(code)} ${when} · sale ${formatDeparture(train.scheduled.departure)}`;
     }
     const verb = train.scheduled.departure.getTime() > Date.now() ? 'Sale' : 'Debía salir';
     return `${verb} ${formatDeparture(train.scheduled.departure)}`;
 }
 
+// Filtered by a station, the list answers "what can I catch there": order by the time at that station and drop
+// the trains that have already called there.
+function stationTime(train) {
+    const index = matchingStopIndex(train, state.fleetSearchQuery);
+    return index > 0 ? scheduledStopDates(train.scheduled)[index].getTime() : train.scheduled.departure.getTime();
+}
+
 function renderUpcomingRows(tbody, upcoming) {
-    const trains = upcoming.map(scheduledToTrain)
+    let trains = upcoming.map(scheduledToTrain)
         .filter(t => !state.fleetSearchQuery || trainMatchesQuery(t, state.fleetSearchQuery));
+    if (state.fleetSearchQuery) {
+        const from = Date.now() - 5 * 60000;
+        trains = trains.filter(t => stationTime(t) >= from).sort((a, b) => stationTime(a) - stationTime(b));
+    }
 
     if (trains.length === 0) {
         const reason = state.schedule.length === 0
@@ -1635,7 +1695,7 @@ function renderUpcomingRows(tbody, upcoming) {
         const prod = getProductInfo(t.codProduct);
         const status = t.cancelled ? { text: 'Cancelado', class: 'heavy' } : { text: 'Programado', class: 'scheduled' };
         const tr = document.createElement('tr');
-        tr.className = 'scheduled-row';
+        tr.className = t.cancelled ? 'scheduled-row cancelled-row' : 'scheduled-row';
         tr.innerHTML = `
             <td><span class="table-train-tag">#${escapeHTML(t.codComercial)}</span></td>
             <td><span class="table-badge" style="background-color: ${escapeHTML(prod.color)}">${escapeHTML(prod.name)}</span></td>

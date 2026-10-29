@@ -4,25 +4,45 @@
  * y añade caché de borde (Edge Cache) de 30 segundos para reducir la latencia y la carga.
  */
 
+// Only InfoTren itself (and a local copy while developing) may use the worker: any other website could otherwise
+// spend the 100,000 free requests a day and leave the app on the backup proxies. Scripts can fake the Origin header,
+// so this stops other web pages, not a determined abuser.
+const ALLOWED_ORIGINS = [/^https:\/\/mosqueteroweb\.github\.io$/, /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/];
+
+function corsHeaders(origin) {
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Accept",
+        "Access-Control-Max-Age": "86400",
+        "Vary": "Origin",
+    };
+}
+
+function jsonError(status, message, origin) {
+    return new Response(JSON.stringify({ error: message }), {
+        status,
+        headers: { "Content-Type": "application/json; charset=utf-8", ...(origin ? corsHeaders(origin) : {}) }
+    });
+}
+
 export default {
     async fetch(request, env, ctx) {
+        const origin = request.headers.get("Origin") || "";
+        if (!ALLOWED_ORIGINS.some((pattern) => pattern.test(origin))) {
+            return jsonError(403, "Este proxy solo atiende a InfoTren.", null);
+        }
+
         // Manejo de preflight CORS (OPTIONS)
         if (request.method === "OPTIONS") {
-            return new Response(null, {
-                status: 204,
-                headers: {
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-                    "Access-Control-Allow-Headers": "Content-Type, Accept",
-                    "Access-Control-Max-Age": "86400",
-                },
-            });
+            return new Response(null, { status: 204, headers: corsHeaders(origin) });
         }
 
         const url = new URL(request.url);
-        
-        // Only these public Renfe files can be fetched (live fleet, routes, and GTFS-RT updates with cancellations). The old check (hostname ends with "renfe.com")
-        // also let through "evilrenfe.com" and any other Renfe address, turning the worker into an open proxy.
+
+        // Only these public Renfe files can be fetched (live fleet, routes, and GTFS-RT updates with cancellations).
+        // The old check (hostname ends with "renfe.com") also let through "evilrenfe.com" and any other Renfe address,
+        // turning the worker into an open proxy.
         const ALLOWED = {
             flota: "https://tiempo-real.largorecorrido.renfe.com/renfe-visor/flotaLD.json",
             rutas: "https://tiempo-real.largorecorrido.renfe.com/renfe-visor/trenesConEstacionesLD.json",
@@ -42,15 +62,13 @@ export default {
             targetUrl = ALLOWED.avisos;
         }
         if (!targetUrl) {
-            return new Response(JSON.stringify({ error: "Solo se permiten flotaLD.json, trenesConEstacionesLD.json y trip_updates_LD.json de Renfe." }), {
-                status: 403,
-                headers: { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" }
-            });
+            return jsonError(403, "Solo se permiten flotaLD.json, trenesConEstacionesLD.json y trip_updates_LD.json de Renfe.", origin);
         }
 
-        // Configuración de caché Edge de Cloudflare (30 segundos)
+        // Configuración de caché Edge de Cloudflare (30 segundos). The cached copy has no CORS headers:
+        // they depend on who asks and are added below.
         const cache = caches.default;
-        const cacheKey = new Request(targetUrl, request);
+        const cacheKey = new Request(targetUrl, { method: "GET" });
         let response = await cache.match(cacheKey);
 
         if (!response) {
@@ -63,10 +81,7 @@ export default {
                 });
 
                 if (!renfeResponse.ok) {
-                    return new Response(JSON.stringify({ error: `Error Renfe: ${renfeResponse.status}` }), {
-                        status: renfeResponse.status,
-                        headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" }
-                    });
+                    return jsonError(renfeResponse.status, `Error Renfe: ${renfeResponse.status}`, origin);
                 }
 
                 const data = await renfeResponse.text();
@@ -74,7 +89,6 @@ export default {
                     status: 200,
                     headers: {
                         "Content-Type": "application/json; charset=utf-8",
-                        "Access-Control-Allow-Origin": "*",
                         "Cache-Control": "public, max-age=30, s-maxage=30",
                         "X-Proxy-By": "InfoTren-Cloudflare-Worker"
                     }
@@ -83,13 +97,14 @@ export default {
                 // Guardar en la caché Edge
                 ctx.waitUntil(cache.put(cacheKey, response.clone()));
             } catch (err) {
-                return new Response(JSON.stringify({ error: "Fallo de conexión al servidor de Renfe", details: err.message }), {
-                    status: 502,
-                    headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" }
-                });
+                // The error text could describe Cloudflare internals: log it, do not send it.
+                console.error("Fallo al leer Renfe", err);
+                return jsonError(502, "Fallo de conexión al servidor de Renfe", origin);
             }
         }
 
-        return response;
+        const headers = new Headers(response.headers);
+        Object.entries(corsHeaders(origin)).forEach(([key, value]) => headers.set(key, value));
+        return new Response(response.body, { status: response.status, headers });
     }
 };

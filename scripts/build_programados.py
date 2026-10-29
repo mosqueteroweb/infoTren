@@ -26,6 +26,9 @@ MADRID = ZoneInfo("Europe/Madrid")
 WINDOW_BACK = timedelta(hours=3)
 WINDOW_AHEAD = timedelta(hours=28)
 MIN_TRAINS = 100
+# Today the ZIP is about 1 MB and 40 MB unpacked; the caps only stop a broken or hostile download from filling the runner.
+MAX_ZIP_BYTES = 30 * 1024 * 1024
+MAX_UNPACKED_BYTES = 400 * 1024 * 1024
 
 # Same codes as PRODUCTS in app.js, so the app shows the usual name and colour.
 PRODUCT_CODES = {
@@ -57,10 +60,17 @@ def read_table(archive, name):
 def load_archive(local_zip):
     if local_zip:
         with open(local_zip, "rb") as f:
-            return zipfile.ZipFile(io.BytesIO(f.read()))
-    request = urllib.request.Request(GTFS_URL, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(request, timeout=60) as response:
-        return zipfile.ZipFile(io.BytesIO(response.read()))
+            content = f.read(MAX_ZIP_BYTES + 1)
+    else:
+        request = urllib.request.Request(GTFS_URL, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(request, timeout=60) as response:
+            content = response.read(MAX_ZIP_BYTES + 1)
+    if len(content) > MAX_ZIP_BYTES:
+        raise ValueError("ZIP de horarios demasiado grande")
+    archive = zipfile.ZipFile(io.BytesIO(content))
+    if sum(info.file_size for info in archive.infolist()) > MAX_UNPACKED_BYTES:
+        raise ValueError("ZIP de horarios demasiado grande al descomprimir")
+    return archive
 
 
 def service_runs_on(service_id, day, calendar, exceptions):

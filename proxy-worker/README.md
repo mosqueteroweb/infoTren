@@ -33,5 +33,6 @@ localStorage.setItem('infotren_custom_proxy', 'https://otro-worker.tu-usuario.wo
 ```
 
 El worker incluye además:
+- **Solo para InfoTren**: responde a `https://mosqueteroweb.github.io` y a `localhost` (desarrollo); otras webs reciben un 403. Si la app cambia de dirección, hay que añadirla en `ALLOWED_ORIGINS`.
 - **Validación de seguridad**: solo sirve `flotaLD.json`, `trenesConEstacionesLD.json` y `trip_updates_LD.json` (cancelaciones) de Renfe; cualquier otra dirección recibe un 403.
 - **Caché Edge de 30 segundos**: Acelera drásticamente las respuestas y evita sobrecargar los servidores de Renfe.

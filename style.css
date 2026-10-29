@@ -859,6 +859,12 @@ body {
     border-color: #059669;
 }
 
+.delay-highlight.delay-unknown {
+    background: var(--bg-card-subtle);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
 .delay-highlight.delay-slight {
     background: #fffbeb;
     color: #92400e;
@@ -1630,6 +1636,11 @@ body {
 .table-delay.slight { color: var(--status-amber); }
 .table-delay.heavy { color: var(--status-red); }
 .table-delay.scheduled { color: var(--text-muted); }
+/* Cancelled departures stay in the list (people look for them) but step back so the ones that run stand out. */
+.fleet-table tr.cancelled-row td:nth-child(3),
+.fleet-table tr.cancelled-row td:nth-child(4),
+.fleet-table tr.cancelled-row td:nth-child(5) { color: var(--text-muted); }
+.fleet-table tr.cancelled-row td:nth-child(5) { text-decoration: line-through; }
 
 /* ==========================================================================
    PIE DE PÁGINA (FOOTER) CON AUTORÍA OFICIAL MOSQUETEROWEB

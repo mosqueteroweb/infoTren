@@ -15,7 +15,7 @@
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <!-- Scripts only from this site and the pinned Leaflet build (no inline scripts); data only from Renfe and the CORS proxies. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com/leaflet@1.9.4/; style-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/; img-src 'self' data: https://tile.openstreetmap.org https://unpkg.com/leaflet@1.9.4/; font-src 'self'; connect-src 'self' https://tiempo-real.largorecorrido.renfe.com https://cors-anywhere.fly.dev https://api.allorigins.win https://api.codetabs.com https://infotren-cors-proxy.mosqueteroweb.workers.dev; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com/leaflet@1.9.4/; style-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/; img-src 'self' data: https://tile.openstreetmap.org https://unpkg.com/leaflet@1.9.4/; font-src 'self'; connect-src 'self' https://tiempo-real.largorecorrido.renfe.com https://cors-anywhere.fly.dev https://infotren-cors-proxy.mosqueteroweb.workers.dev; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
     
@@ -28,7 +28,7 @@
     <!-- Custom CSS -->
     <!-- ?v= must match the version in the footer and in sw.js: browsers keep app.js and style.css for up to
          10 minutes, and a new page with the old script showed half-updated screens. CI checks the three agree. -->
-    <link rel="stylesheet" href="style.css?v=1.7.4">
+    <link rel="stylesheet" href="style.css?v=1.8.0">
 </head>
 <body>
     <header class="app-header">
@@ -406,7 +406,7 @@
                         <span class="footer-sep">·</span>
                         <a href="https://github.com/mosqueteroweb" target="_blank" rel="noopener">GitHub @mosqueteroweb</a>
                         <span class="footer-sep">·</span>
-                        <a href="https://github.com/mosqueteroweb/infoTren/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Versión 1.7.4</a>
+                        <a href="https://github.com/mosqueteroweb/infoTren/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Versión 1.8.0</a>
                     </p>
                 </div>
             </div>
@@ -424,6 +424,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <!-- Custom App JS -->
-    <script src="app.js?v=1.7.4"></script>
+    <script src="app.js?v=1.8.0"></script>
 </body>
 </html>

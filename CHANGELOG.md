@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.8.0 — 29 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Auditorías de seguridad y de UX repetidas tras los cambios de la 1.7. Seguridad: las cancelaciones solo llegan por el proxy propio (un proxy ajeno podía inventarlas), el proxy de Cloudflare solo atiende a la app, se retiran dos proxies públicos que ya no respondían y el script de horarios limita el tamaño de la descarga. UX: «Próximas salidas» filtradas por una estación se ordenan por la hora en esa estación y sin los trenes que ya pasaron; los avisos «Programado» y «Sin datos en directo» dejan de ser verdes; un tren sin datos en directo indica dónde debería estar según el horario; los cancelados se distinguen en la lista. [Seguridad](docs/1.8.0/AUDITORIA_SEGURIDAD.md) · [UX](docs/1.8.0/AUDITORIA_UX.md).
+
 ## 1.7.4 — 29 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Corrección importante: la app descartaba los trenes en doble composición (dos unidades acopladas), unos 10 de cada 70 en circulación. Su material llega como `103004,103005`, 13 caracteres, y la validación de la 1.5.0 solo admitía 12. Entre ellos estaban AVE como el 03113 o el 03122, que en vez de verse en directo con su retraso salían como «programados». Ahora se aceptan y la matrícula se muestra como `103004 + 103005`. Además, un tren programado cuya hora de salida ya ha pasado y que no aparece en directo dice «Sin datos en directo» en vez de «Aún no ha salido», porque no se puede saber si salió.
