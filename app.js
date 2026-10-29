@@ -629,6 +629,7 @@ function searchTrain(query) {
     const searchCard = document.getElementById('searchCard');
 
     if (found) {
+        hideSearchError();
         emptyPrompt.style.display = 'none';
         notFoundState.style.display = 'none';
         detailContainer.style.display = 'block';
@@ -648,6 +649,35 @@ function searchTrain(query) {
         document.getElementById('notFoundTitle').textContent = `Tren #${clean} no encontrado`;
         document.getElementById('notFoundMsg').textContent = 
             `Actualmente no hay datos activos para el tren número ${clean}. Revisa el número de tu billete o consulta la lista de trenes en circulación.`;
+        showSearchError(`Tren #${clean} no encontrado. Revisa el número o mira los consejos más abajo.`);
+    }
+}
+
+// Aviso corto junto al campo: los recientes empujan la tarjeta grande fuera de la pantalla del móvil
+function showSearchError(message) {
+    const error = document.getElementById('searchError');
+    const input = document.getElementById('trainInput');
+    if (!error) return;
+    error.textContent = message;
+    error.setAttribute('role', 'alert');
+    error.hidden = false;
+    if (input) {
+        input.setAttribute('aria-invalid', 'true');
+        input.setAttribute('aria-describedby', 'searchError');
+    }
+    error.scrollIntoView({ behavior: scrollBehavior(), block: 'nearest' });
+}
+
+function hideSearchError() {
+    const error = document.getElementById('searchError');
+    const input = document.getElementById('trainInput');
+    if (error) {
+        error.hidden = true;
+        error.textContent = '';
+    }
+    if (input) {
+        input.removeAttribute('aria-invalid');
+        input.removeAttribute('aria-describedby');
     }
 }
 
@@ -1158,6 +1188,7 @@ function highlightAutocompleteItem(items) {
 }
 
 function handleInputSearch(e) {
+    hideSearchError();
     const query = e.target.value.trim().toLowerCase();
     const btnClear = document.getElementById('btnClear');
     const dropdown = document.getElementById('autocompleteDropdown');
@@ -1372,6 +1403,7 @@ function showHomeView() {
     const searchCard = document.getElementById('searchCard');
     if (searchCard) searchCard.style.display = 'block';
     clearSearch();
+    hideSearchError();
     document.getElementById('trainDetailContainer').style.display = 'none';
     document.getElementById('notFoundState').style.display = 'none';
     document.getElementById('emptySearchPrompt').style.display = 'block';

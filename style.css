@@ -622,6 +622,26 @@ body {
     font-weight: 700;
 }
 
+/* Aviso de tren no encontrado bajo el buscador */
+.search-error {
+    margin: -0.25rem 0 0.85rem;
+    padding: 0.65rem 0.85rem;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--status-red);
+    background: var(--status-red-bg);
+    border-left: 4px solid var(--status-red);
+    border-radius: var(--radius-sm);
+}
+
+.search-error[hidden] {
+    display: none;
+}
+
+.search-input[aria-invalid="true"] {
+    border-color: var(--status-red);
+}
+
 /* Búsquedas recientes */
 .recent-access {
     display: flex;

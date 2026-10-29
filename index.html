@@ -116,6 +116,9 @@
                     </button>
                 </form>
 
+                <!-- Aviso corto de tren no encontrado, pegado al campo para que se vea sin desplazar -->
+                <p class="search-error" id="searchError" hidden></p>
+
                 <!-- Búsquedas recientes del usuario -->
                 <div class="recent-access" id="recentAccess" style="display:none;">
                     <span class="quick-title">Consultados recientemente:</span>
@@ -256,7 +259,7 @@
             </div>
 
             <!-- Estado de Error / Tren No Encontrado -->
-            <div id="notFoundState" class="not-found-state" style="display: none;" role="alert">
+            <div id="notFoundState" class="not-found-state" style="display: none;">
                 <div class="not-found-icon" aria-hidden="true">🔎</div>
                 <h3 id="notFoundTitle">No se encontró el tren</h3>
                 <p id="notFoundMsg">No disponemos de información en tiempo real para este número de tren en este momento.</p>
@@ -397,7 +400,7 @@
                         <span class="footer-sep">·</span>
                         <a href="https://github.com/mosqueteroweb" target="_blank" rel="noopener">GitHub @mosqueteroweb</a>
                         <span class="footer-sep">·</span>
-                        <a href="https://github.com/mosqueteroweb/infoTren/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Versión 1.6.0</a>
+                        <a href="https://github.com/mosqueteroweb/infoTren/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Versión 1.6.1</a>
                     </p>
                 </div>
             </div>
