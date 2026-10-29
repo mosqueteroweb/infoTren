@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.7.1 — 29 de octubre de 2026
+
+**Autor: Mosqueteroweb.** Corrección: en el móvil, cuando un filtro de «En circulación» no daba resultados se veía una tarjeta en blanco. El mensaje («No se encontraron trenes…», «Cargando…», «Se muestran las 200 primeras…») iba en una fila de una sola casilla, y esa casilla se ocultaba como el botón «Ver Tren», que en el móvil es invisible porque se pulsa la tarjeta entera.
+
 ## 1.7.0 — 29 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Trenes programados de las próximas 24 horas. Hasta ahora solo salían los que ya circulaban; ahora un número que aún no ha salido abre su ficha con la salida y el itinerario previstos, y «En circulación» tiene el chip «Próximas salidas». Los horarios salen del GTFS abierto de Renfe (data.renfe.com, CC BY 4.0), que el flujo de GitHub reduce cada 2 horas a `data/programados.json`. Las cancelaciones llegan en directo del GTFS-RT de Renfe por el proxy propio; como el aviso no dice el día, solo se marcan las salidas de hoy. Renfe no publica retrasos antes de la salida, así que un tren programado aparece sin retraso hasta que empieza a circular. Nuevos tipos: Proximidad, Trencelta y Avant Exprés. Atribución de los datos en el pie.

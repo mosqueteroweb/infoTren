@@ -1554,6 +1554,16 @@ body {
         clip-path: inset(50%);
     }
     .fleet-table td:last-child button:focus-visible { outline: none; }
+    /* Message rows ("no results", "loading", "showing 200 of…") have a single cell, which is also the last one:
+       without this it was hidden like the button and the list showed an empty card. */
+    .fleet-table tbody td.table-loading {
+        position: static;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        clip-path: none;
+        grid-column: 1 / -1;
+    }
     .fleet-table tbody tr:focus-within { outline: 3px solid var(--renfe-purple); outline-offset: 2px; }
 }
 
