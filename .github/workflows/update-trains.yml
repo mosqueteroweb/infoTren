@@ -45,7 +45,9 @@ jobs:
                       raise ValueError("respuesta demasiado grande")
                   with open(dest, "wb") as f:
                       f.write(content)
-                  print(f"Descargado con éxito: {dest} ({len(content)} bytes, {len(data['trenes'])} trenes)")
+                  # No single quotes in here: the whole script sits inside a single-quoted shell string.
+                  count = len(data["trenes"])
+                  print(f"Descargado con éxito: {dest} ({len(content)} bytes, {count} trenes)")
               except Exception as e:
                   print(f"Se conserva la copia anterior de {dest}: {e}")
           '
