@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.8.2 — 3 de noviembre de 2026
+
+**Autor: Mosqueteroweb.** Ajustes para móviles plegables (auditoría de UX en Galaxy Z Fold8). En pantallas estrechas, los trenes destacados y los filtros de «En circulación» ocupan una sola fila que se desliza de lado, así que la lista empieza en la primera pantalla; con A+ siguen repartiéndose en varias filas. Hasta 1023 px se muestran tarjetas en lugar de la tabla de 8 columnas, que no cabía en la pantalla interior de un plegable (832 px) y dejaba fuera el botón de cada tren; de 600 a 1023 px las tarjetas van en dos columnas. Los botones de la cabecera pasan de 40 a 48 px y los de zoom del mapa de 30 a 44 px.
+
 ## 1.8.1 — 29 de octubre de 2026
 
 **Autor: Mosqueteroweb.** Búsqueda por estación más completa: «Próximas salidas» filtradas por una estación incluyen también los trenes que ya salieron de su origen pero que Renfe no sigue en directo (unos 4 de cada 10 a mediodía, sobre todo Media Distancia y Regionales), siempre que aún no hayan pasado por esa estación. Aparecen con la hora prevista en la estación y el estado «Sin datos en directo», nunca como «En hora». Corrección: unos 160 trenes salían dos veces en «Próximas salidas», porque Renfe publica dos variantes del mismo tren y salida; ahora se juntan en una (la de más paradas) y se tienen en cuenta las cancelaciones de las dos.

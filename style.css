@@ -180,8 +180,8 @@ body {
 }
 
 .btn-font-scale {
-    min-width: 42px;
-    height: 40px;
+    min-width: 48px;
+    height: 48px;
     padding: 0 0.55rem;
     border-radius: var(--radius-md);
     background: rgba(255, 255, 255, 0.22);
@@ -204,7 +204,7 @@ body {
 }
 
 .btn-install-pwa {
-    height: 40px;
+    height: 48px;
     padding: 0 0.7rem;
     border-radius: var(--radius-md);
     background: #ffffff;
@@ -278,8 +278,8 @@ body {
 }
 
 .btn-icon {
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     border-radius: var(--radius-md);
     background: rgba(255, 255, 255, 0.22);
     border: 1.5px solid rgba(255, 255, 255, 0.4);
@@ -1491,8 +1491,8 @@ body {
     box-sizing: border-box;
 }
 
-/* En pantallas pequeñas, convertir tabla a tarjetas accesibles */
-@media (max-width: 768px) {
+/* Cards up to 1023px: the 8-column table needs ~1000px, and the inner screen of a foldable is 832px. */
+@media (max-width: 1023px) {
     .fleet-table-wrapper {
         background: transparent;
         border: none;
@@ -1573,7 +1573,7 @@ body {
     .fleet-table tbody tr:focus-within { outline: 3px solid var(--renfe-purple); outline-offset: 2px; }
 }
 
-@media (min-width: 769px) {
+@media (min-width: 1024px) {
     .fleet-table {
         width: 100%;
         border-collapse: collapse;
@@ -1924,7 +1924,7 @@ body {
     overflow-wrap: anywhere;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .fleet-table tbody tr {
         grid-template-columns: auto minmax(0, 1fr) auto;
     }
@@ -1943,7 +1943,7 @@ body {
 
 /* Tablet and desktop: the main column is ~860 px and the eight columns did not fit, so "Acción" was cut off.
    As on mobile, the whole row opens the train and the button is kept only for keyboard and screen readers. */
-@media (min-width: 769px) {
+@media (min-width: 1024px) {
     .fleet-table th,
     .fleet-table td {
         padding: 0.75rem 0.7rem;
@@ -1985,7 +1985,7 @@ body {
 }
 
 /* Fleet cards: keep "Madrid Atocha → Pamplona Iruña" together instead of pushing the destination to the far edge. */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .fleet-table tbody tr {
         grid-template-areas:
             "num   prod  delay"
@@ -2007,7 +2007,7 @@ body {
 
 /* Destination written next to the origin only in the card layout; the desktop table keeps its own column. */
 .route-inline { display: none; }
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .route-inline { display: inline; }
 }
 
@@ -2040,4 +2040,49 @@ body {
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+/* ==========================================================================
+   PLEGABLES (Galaxy Z Fold: exterior ~411px, interior ~832px)
+   ========================================================================== */
+
+/* Inner screen and small tablets: train cards in two columns instead of one 800px-wide card. */
+@media (min-width: 600px) and (max-width: 1023px) {
+    .fleet-table tbody {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 0.6rem;
+    }
+}
+
+/* Narrow phones at normal text size: quick trains and filters scroll sideways in one row,
+   so the list starts on the first screen. With A+ they keep wrapping, as before. */
+@media (max-width: 599px) {
+    html:not(.font-large):not(.font-xlarge) .fleet-quick-access .quick-chips,
+    html:not(.font-large):not(.font-xlarge) .filter-pills {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+    }
+    html:not(.font-large):not(.font-xlarge) .fleet-quick-access .quick-chips::-webkit-scrollbar,
+    html:not(.font-large):not(.font-xlarge) .filter-pills::-webkit-scrollbar {
+        display: none;
+    }
+    html:not(.font-large):not(.font-xlarge) .fleet-quick-access .chip,
+    html:not(.font-large):not(.font-xlarge) .filter-pill {
+        flex: 0 0 auto;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+        scroll-snap-align: start;
+    }
+}
+
+/* Map zoom buttons big enough for a finger (Leaflet's touch default is 30px). */
+.leaflet-touch .leaflet-bar a {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+    font-size: 22px;
 }
